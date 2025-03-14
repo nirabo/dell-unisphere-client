@@ -1,0 +1,32 @@
+[project]
+name = "dell-unisphere-client"
+version = "0.1.0"
+description = "Client library and CLI for Dell Unisphere REST API"
+readme = "README.md"
+authors = [
+    { name = "Lyuboslav Petrov", email = "petrov.lyuboslav@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31.0",
+    "rich>=13.6.0",
+    "pydantic>=2.4.0",
+    "httpx>=0.25.0",
+    "pre-commit>=4.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.0.270",
+    "build>=0.10.0",
+    "twine>=4.0.0"
+]
+
+[project.scripts]
+unisphere = "dell_unisphere_client.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"

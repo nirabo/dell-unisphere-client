@@ -1,0 +1,31 @@
+#!/bin/bash
+# uniclient - Bash entrypoint for Dell Unisphere Client
+
+# Determine the script's directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+# Check if the script is being run from the installed package or from the source directory
+if [[ -d "${SCRIPT_DIR}/src/dell_unisphere_client" ]]; then
+    # Running from source directory
+    PYTHON_MODULE="dell_unisphere_client.cli"
+    cd "${SCRIPT_DIR}"
+else
+    # Running from installed location
+    PYTHON_MODULE="dell_unisphere_client.cli"
+fi
+
+# Check if we're in a virtual environment
+if [[ -n "${VIRTUAL_ENV}" ]]; then
+    # Use the Python from the virtual environment
+    PYTHON="${VIRTUAL_ENV}/bin/python"
+elif command -v uv &> /dev/null; then
+    # Use uv if available
+    exec uv run python -m ${PYTHON_MODULE} "$@"
+    exit $?
+else
+    # Default to system Python
+    PYTHON="python"
+fi
+
+# Execute the CLI module with all arguments passed to this script
+exec ${PYTHON} -m ${PYTHON_MODULE} "$@"
