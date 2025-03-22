@@ -334,6 +334,46 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output in JSON format",
     )
 
+    # Prepare software command
+    prepare_software_parser = subparsers.add_parser(
+        "prepare-software", help="Prepare an uploaded software package"
+    )
+    prepare_software_parser.add_argument(
+        "--file-id", required=True, help="ID of the uploaded file"
+    )
+    prepare_software_parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output in JSON format",
+    )
+
+    # Monitor upgrade command
+    monitor_upgrade_parser = subparsers.add_parser(
+        "monitor-upgrade", help="Monitor an upgrade session until completion"
+    )
+    monitor_upgrade_parser.add_argument("--id", required=True, help="Session ID")
+    monitor_upgrade_parser.add_argument(
+        "--interval",
+        type=int,
+        default=5,
+        help="Polling interval in seconds (default: 5)",
+    )
+    monitor_upgrade_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Maximum time to wait in seconds (default: 300)",
+    )
+    monitor_upgrade_parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output in JSON format",
+    )
+
     return parser
 
 
@@ -655,6 +695,127 @@ def cmd_upload_package(args: argparse.Namespace) -> None:
             print_json(result)
         else:
             console.print("Software package uploaded successfully.")
+
+            # Extract file ID from the response
+            file_id = None
+            if "id" in result:
+                file_id = result["id"]
+            elif "content" in result and "id" in result["content"]:
+                file_id = result["content"]["id"]
+
+            if file_id:
+                console.print(f"File ID: {file_id}")
+                console.print("To prepare this package, run:")
+                console.print(f"  uniclient prepare-software --file-id {file_id}")
+    except UnisphereClientError as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
+
+
+def cmd_prepare_software(args: argparse.Namespace) -> None:
+    """Prepare an uploaded software package.
+
+    Args:
+        args: Command line arguments.
+    """
+    try:
+        client = get_client()
+        result = client.prepare_software(args.file_id)
+
+        if hasattr(args, "json_output") and args.json_output:
+            print_json(result)
+        else:
+            console.print("Software package prepared successfully.")
+
+            # Extract candidate ID from the response
+            candidate_id = None
+            if "id" in result:
+                candidate_id = result["id"]
+            elif "content" in result and "id" in result["content"]:
+                candidate_id = result["content"]["id"]
+
+            if candidate_id:
+                console.print(f"Candidate ID: {candidate_id}")
+                console.print("To create an upgrade session, run:")
+                console.print(f"  uniclient create-upgrade --version {candidate_id}")
+    except UnisphereClientError as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
+
+
+def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
+    """Monitor an upgrade session until completion.
+
+    Args:
+        args: Command line arguments.
+    """
+    try:
+        client = get_client()
+
+        # Display initial message
+        console.print(f"Monitoring upgrade session {args.id}...")
+        console.print(
+            f"Polling every {args.interval} seconds (timeout: {args.timeout} seconds)"
+        )
+        console.print("Press Ctrl+C to stop monitoring")
+
+        # Create a progress display
+        from rich.progress import (
+            Progress,
+            TextColumn,
+            BarColumn,
+            TimeElapsedColumn,
+            SpinnerColumn,
+        )
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+            console=console,
+            transient=False,
+        ) as progress:
+            # Create the main progress task
+            task_id = progress.add_task(f"Upgrade Session: {args.id}", total=100)
+
+            try:
+                # Start monitoring
+                result = client.monitor_upgrade_session(
+                    session_id=args.id, interval=args.interval, timeout=args.timeout
+                )
+
+                # Update progress to 100% when complete
+                progress.update(task_id, completed=100)
+
+                # Display final result
+                if hasattr(args, "json_output") and args.json_output:
+                    print_json(result)
+                else:
+                    console.print("[green]Upgrade completed successfully![/green]")
+
+                    # Extract and display task completion summary
+                    content = result.get("content", {})
+                    tasks = content.get("tasks", [])
+
+                    if tasks:
+                        # Create a table for task summary
+                        table = Table(title="Task Completion Summary")
+                        table.add_column("Task")
+                        table.add_column("Status")
+
+                        for task in tasks:
+                            task_name = task.get("caption", "Unknown")
+                            task_status = task.get("status", 0)
+                            status_text = client._get_status_text(task_status)
+                            table.add_row(task_name, status_text)
+
+                        console.print(table)
+            except KeyboardInterrupt:
+                console.print("[yellow]Monitoring stopped by user[/yellow]")
+                return
+
     except UnisphereClientError as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         sys.exit(1)
@@ -735,6 +896,10 @@ def main() -> None:
         cmd_resume_upgrade(args)
     elif args.command == "upload-package":
         cmd_upload_package(args)
+    elif args.command == "prepare-software":
+        cmd_prepare_software(args)
+    elif args.command == "monitor-upgrade":
+        cmd_monitor_upgrade(args)
     else:
         parser.print_help()
 

@@ -60,6 +60,9 @@ class TestCLIIntegration:
 
         # Get client
         with patch("dell_unisphere_client.cli.UnisphereClient") as MockClient:
+            # Actually call get_client
+            cli.get_client()
+
             # Verify client was created with correct parameters
             MockClient.assert_called_once_with(
                 base_url="https://example.com",
@@ -83,6 +86,9 @@ class TestCLIIntegration:
 
         # Get client with override
         with patch("dell_unisphere_client.cli.UnisphereClient") as MockClient:
+            # Actually call get_client with password override
+            cli.get_client(password="newpass")
+
             # Verify client was created with correct parameters
             MockClient.assert_called_once_with(
                 base_url="https://example.com",

@@ -115,12 +115,12 @@ def sample_candidate_versions():
 def sample_upgrade_sessions():
     """Return a sample upgrade sessions response."""
     return {
-        "@base": "https://example.com/api/types/softwareUpgradeSession/instances?per_page=2000",
+        "@base": "https://example.com/api/types/upgradeSession/instances?per_page=2000",
         "updated": "2025-03-14T08:00:00.000Z",
         "links": [{"rel": "self", "href": "&page=1"}],
         "entries": [
             {
-                "@base": "https://example.com/api/instances/softwareUpgradeSession",
+                "@base": "https://example.com/api/instances/upgradeSession",
                 "updated": "2025-03-14T08:00:00.000Z",
                 "links": [{"rel": "self", "href": "/1"}],
                 "content": {

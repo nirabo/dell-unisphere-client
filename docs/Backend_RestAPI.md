@@ -9,77 +9,75 @@ This document provides a comprehensive overview of the Dell Unisphere REST API, 
 <!-- TOC -->
 
 - [Dell Unisphere REST API Documentation](#dell-unisphere-rest-api-documentation)
-    - [Overview](#overview)
-    - [Basic System Info](#basic-system-info)
-        - [Supported Operations](#supported-operations)
-        - [Attributes](#attributes)
-        - [Query all members of the basicSystemInfo collection](#query-all-members-of-the-basicsysteminfo-collection)
-        - [Query a specific basicSystemInfo instance](#query-a-specific-basicsysteminfo-instance)
-    - [Authentication and Authorization](#authentication-and-authorization)
-    - [Example - Get CSRF token](#example---get-csrf-token)
-            - [This is the response:](#this-is-the-response)
-            - [Now, we could use the token to send POST or DELETE request:](#now-we-could-use-the-token-to-send-post-or-delete-request)
-    - [How to get attributes of resource](#how-to-get-attributes-of-resource)
-    - [Example - Get attributes of pool](#example---get-attributes-of-pool)
-    - [Unity will return all the attribute names of pooleturn all the attribute names of pool:](#unity-will-return-all-the-attribute-names-of-pooleturn-all-the-attribute-names-of-pool)
-    - [System](#system)
-        - [Supported operations](#supported-operations)
-        - [Attributes](#attributes)
-        - [Query a specific system instance](#query-a-specific-system-instance)
-        - [Fallback operation](#fallback-operation)
-        - [Modify operation](#modify-operation)
-            - [Arguments for the Modify operation](#arguments-for-the-modify-operation)
-    - [InstalledSoftwareVersion](#installedsoftwareversion)
-        - [Embedded resource types](#embedded-resource-types)
-    - [Supported operations](#supported-operations)
-        - [Attributes](#attributes)
-        - [Attributes for firmwarePackage](#attributes-for-firmwarepackage)
-        - [Attributes for installedSoftwareVersionLanguage](#attributes-for-installedsoftwareversionlanguage)
-        - [Attributes for installedSoftwareVersionPackages](#attributes-for-installedsoftwareversionpackages)
-        - [Query all members of the installedSoftwareVersion collection](#query-all-members-of-the-installedsoftwareversion-collection)
-        - [Query a specific installedSoftwareVersion instance](#query-a-specific-installedsoftwareversion-instance)
-    - [Login Session Info](#login-session-info)
-    - [Supported operations](#supported-operations)
+  - [Overview](#overview)
+  - [Basic System Info](#basic-system-info)
+    - [Supported Operations](#supported-operations)
+    - [Attributes](#attributes)
+    - [Query all members of the basicSystemInfo collection](#query-all-members-of-the-basicsysteminfo-collection)
+    - [Query a specific basicSystemInfo instance](#query-a-specific-basicsysteminfo-instance)
+  - [Authentication and Authorization](#authentication-and-authorization)
+  - [Example - Get CSRF token](#example---get-csrf-token)
+      - [This is the response:](#this-is-the-response)
+      - [Now, we could use the token to send POST or DELETE request:](#now-we-could-use-the-token-to-send-post-or-delete-request)
+  - [How to get attributes of resource](#how-to-get-attributes-of-resource)
+  - [Example - Get attributes of pool](#example---get-attributes-of-pool)
+  - [Unity will return all the attribute names of pooleturn all the attribute names of pool:](#unity-will-return-all-the-attribute-names-of-pooleturn-all-the-attribute-names-of-pool)
+  - [System](#system)
+    - [Supported operations](#supported-operations-1)
+    - [Attributes](#attributes-1)
+    - [Query a specific system instance](#query-a-specific-system-instance)
+    - [Fallback operation](#fallback-operation)
+    - [Modify operation](#modify-operation)
+      - [Arguments for the Modify operation](#arguments-for-the-modify-operation)
+  - [InstalledSoftwareVersion](#installedsoftwareversion)
+    - [Embedded resource types](#embedded-resource-types)
+  - [Supported operations](#supported-operations-2)
+    - [Attributes](#attributes-2)
+    - [Attributes for firmwarePackage](#attributes-for-firmwarepackage)
+    - [Attributes for installedSoftwareVersionLanguage](#attributes-for-installedsoftwareversionlanguage)
+    - [Attributes for installedSoftwareVersionPackages](#attributes-for-installedsoftwareversionpackages)
+    - [Query all members of the installedSoftwareVersion collection](#query-all-members-of-the-installedsoftwareversion-collection)
+    - [Query a specific installedSoftwareVersion instance](#query-a-specific-installedsoftwareversion-instance)
+  - [Login Session Info](#login-session-info)
+  - [Supported operations](#supported-operations-3)
 - [Query all members of the loginSessionInfo collection](#query-all-members-of-the-loginsessioninfo-collection)
-    - [Logout operation](#logout-operation)
-    - [User](#user)
-    - [Supported operations](#supported-operations)
-    - [Create operation](#create-operation)
-- [Modify operation](#modify-operation)
-    - [Candidate Software Version](#candidate-software-version)
-            - [Supported operations](#supported-operations)
-- [Attributes](#attributes)
+  - [Logout operation](#logout-operation)
+  - [User](#user)
+  - [Supported operations](#supported-operations-4)
+  - [Create operation](#create-operation)
+- [Modify operation](#modify-operation-1)
+  - [Candidate Software Version](#candidate-software-version)
+      - [Supported operations](#supported-operations-5)
+- [Attributes](#attributes-3)
 - [Attributes for nameValuePair](#attributes-for-namevaluepair)
 - [Prepare operation](#prepare-operation)
-    - [Arguments for the Prepare operation](#arguments-for-the-prepare-operation)
-    - [UpgradeSessionTypeEnum](#upgradesessiontypeenum)
-    - [UpgradeStatusEnum](#upgradestatusenum)
-    - [UpgradeTypeEnum](#upgradetypeenum)
-    - [Software Upgrade Session](#software-upgrade-session)
-        - [Embedded resource types](#embedded-resource-types)
-        - [Supported operations](#supported-operations)
-        - [Attributes](#attributes)
-            - [Attributes for upgradeMessage](#attributes-for-upgrademessage)
-            - [Attributes for upgradeTask](#attributes-for-upgradetask)
-            - [Query all members of the softwareUpgradeSession collection](#query-all-members-of-the-softwareupgradesession-collection)
-            - [Query a specific softwareUpgradeSession instance](#query-a-specific-softwareupgradesession-instance)
-        - [Create operation](#create-operation)
-            - [Arguments for the Create operation](#arguments-for-the-create-operation)
-        - [VerifyUpgradeEligibility operation](#verifyupgradeeligibility-operation)
-            - [Arguments for the VerifyUpgradeEligibility operation](#arguments-for-the-verifyupgradeeligibility-operation)
-        - [Resume operation](#resume-operation)
-    - [Uploading upgrade candidates and language packs](#uploading-upgrade-candidates-and-language-packs)
-        - [Syntax](#syntax)
-    - [Appendix A: Example Response](#appendix-a-example-response)
-        - [Typical Response Structure](#typical-response-structure)
-        - [Explanation of Each Field](#explanation-of-each-field)
-        - [Example in Context: /api/types/basicSystemInfo/instances](#example-in-context-apitypesbasicsysteminfoinstances)
-        - [Key Takeaways](#key-takeaways)
-    - [Appendix B: Example Cookie](#appendix-b-example-cookie)
-        - [Example Cookie Value](#example-cookie-value)
-        - [Explanation of Cookie Components](#explanation-of-cookie-components)
-        - [Additional Context](#additional-context)
-    - [Appendix C: Real API Interaction Record](#appendix-c-real-api-interaction-record)
+  - [Arguments for the Prepare operation](#arguments-for-the-prepare-operation)
+  - [UpgradeSessionTypeEnum](#upgradesessiontypeenum)
+  - [UpgradeStatusEnum](#upgradestatusenum)
+  - [UpgradeTypeEnum](#upgradetypeenum)
+  - [Software Upgrade Session](#software-upgrade-session)
+    - [Embedded resource types](#embedded-resource-types-1)
+    - [Supported operations](#supported-operations-6)
+    - [Attributes](#attributes-4)
+      - [Attributes for upgradeMessage](#attributes-for-upgrademessage)
+      - [Attributes for upgradeTask](#attributes-for-upgradetask)
+      - [Query all members of the softwareUpgradeSession collection](#query-all-members-of-the-softwareupgradesession-collection)
+      - [Query a specific softwareUpgradeSession instance](#query-a-specific-softwareupgradesession-instance)
+    - [Create operation](#create-operation-1)
+      - [Arguments for the Create operation](#arguments-for-the-create-operation)
+    - [VerifyUpgradeEligibility operation](#verifyupgradeeligibility-operation)
+      - [Arguments for the VerifyUpgradeEligibility operation](#arguments-for-the-verifyupgradeeligibility-operation)
+    - [Resume operation](#resume-operation)
+  - [**Uploading upgrade candidates and language packs**](#uploading-upgrade-candidates-and-language-packs)
+    - [Syntax](#syntax)
+    - [Explanation of Each Field](#explanation-of-each-field)
+    - [Example in Context: `/api/types/basicSystemInfo/instances`](#example-in-context-apitypesbasicsysteminfoinstances)
+    - [Key Takeaways](#key-takeaways)
+  - [Appendix B: Example Cookie](#appendix-b-example-cookie)
+    - [Example Cookie Value](#example-cookie-value)
+    - [Explanation of Cookie Components](#explanation-of-cookie-components)
+    - [Additional Context](#additional-context)
+  - [Appendix C: Real API Interaction Record](#appendix-c-real-api-interaction-record)
 
 <!-- /TOC -->
 
@@ -857,7 +855,7 @@ A message occurrence. This is also the message object returned in the body of no
 | Header | Accept: application/json |
 | --- | --- |
 |  | Content - Type: application/json |
-| Method and URI | GET api/types/softwareUpgradeSession/instances |
+| Method and URI | GET api/types/upgradeSession/instances |
 | Request body arguments | None |
 | Successful return status | 200 OK |
 | Successful response body | JSON representation of all members of the softwareUpgradeSession collection. |
@@ -867,7 +865,7 @@ A message occurrence. This is also the message object returned in the body of no
 | Header | Accept: application/json |
 | --- | --- |
 |  | Content - Type: application/json |
-| Method and URI | GET /api/instances/softwareUpgradeSession/<id> |
+| Method and URI | GET /api/instances/upgradeSession/<id> |
 |  | where <id> is the unique identifier of the softwareUpgradeSession instance to query. |
 | Request body arguments | None |
 | Successful return status | 200 OK |
@@ -880,7 +878,7 @@ Start a session to upgrade the system software with an uploaded upgrade candidat
 | Header | Accept: application/json |
 | --- | --- |
 |  | Content - Type: application/json |
-| Method and URI | POST /api/types/softwareUpgradeSession/instances |
+| Method and URI | POST /api/types/upgradeSession/instances |
 | Request body arguments | See the arquments table below. |
 | Successful return status | 201 Created |
 | Successful response body | JSON representation of the <id> attribute |
@@ -906,7 +904,7 @@ Validate that the system is in a healthy state. This is required for an upgrade 
 | --- | --- |
 |  | Content - Type: application/json |
 | Method and URI | POST |
-|  | /api/types/softwareUpgradeSession/action/verifyUpgradeEligibility |
+|  | /api/types/upgradeSession/action/verifyUpgradeEligibility |
 | Request body arguments | See the arguments table below. |
 | Successful return status | 200 OK, 202 Accepted (async response) |
 | Successful response body | JSON representation of the returned attributes. |
@@ -926,7 +924,7 @@ Resume a session that is currently in paused, failed, or failed_lock state.
 | Header | Accept: application/json |
 | --- | --- |
 |  | Content - Type: application/json |
-| Method and URI POST | /api/instances/softwareUpgradeSession/<id>/action/resume |
+| Method and URI POST | /api/instances/upgradeSession/<id>/action/resume |
 |  | where <id> is the unique identifier of the softwareUpgradeSession instance. |
 | Request body arguments None |  |
 | Successful return status | 204 No Content |

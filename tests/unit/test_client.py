@@ -189,7 +189,7 @@ class TestUnisphereClient:
         # Assertions
         assert result == sample_upgrade_sessions
         mock_requests.get.assert_called_once_with(
-            "https://example.com/api/types/softwareUpgradeSession/instances",
+            "https://example.com/api/types/upgradeSession/instances",
             headers={"X-EMC-REST-CLIENT": "true", "EMC-CSRF-TOKEN": "test-token"},
             verify=True,
         )
@@ -216,7 +216,7 @@ class TestUnisphereClient:
         # Assertions
         assert result == response_data
         mock_requests.post.assert_called_once_with(
-            "https://example.com/api/types/softwareUpgradeSession/action/verifyUpgradeEligibility",
+            "https://example.com/api/types/upgradeSession/action/verifyUpgradeEligibility",
             headers={
                 "X-EMC-REST-CLIENT": "true",
                 "EMC-CSRF-TOKEN": "test-token",
@@ -248,7 +248,7 @@ class TestUnisphereClient:
         # Assertions
         assert result == response_data
         mock_requests.post.assert_called_once_with(
-            "https://example.com/api/types/softwareUpgradeSession/instances",
+            "https://example.com/api/types/upgradeSession/instances",
             headers={
                 "X-EMC-REST-CLIENT": "true",
                 "EMC-CSRF-TOKEN": "test-token",
@@ -280,7 +280,7 @@ class TestUnisphereClient:
         # Assertions
         assert result == response_data
         mock_requests.post.assert_called_once_with(
-            "https://example.com/api/instances/softwareUpgradeSession/123/action/resume",
+            "https://example.com/api/instances/upgradeSession/123/action/resume",
             headers={
                 "X-EMC-REST-CLIENT": "true",
                 "EMC-CSRF-TOKEN": "test-token",

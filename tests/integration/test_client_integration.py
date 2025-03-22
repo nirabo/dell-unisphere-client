@@ -108,7 +108,7 @@ class TestClientIntegration:
         verify_response = {"content": {"isEligible": True, "messages": []}}
         responses.add(
             responses.POST,
-            "https://example.com/api/types/softwareUpgradeSession/action/verifyUpgradeEligibility",
+            "https://example.com/api/types/upgradeSession/action/verifyUpgradeEligibility",
             json=verify_response,
             status=200,
         )
@@ -123,7 +123,7 @@ class TestClientIntegration:
         }
         responses.add(
             responses.POST,
-            "https://example.com/api/types/softwareUpgradeSession/instances",
+            "https://example.com/api/types/upgradeSession/instances",
             json=create_response,
             status=200,
         )
@@ -169,7 +169,7 @@ class TestClientIntegration:
         }
         responses.add(
             responses.GET,
-            "https://example.com/api/types/softwareUpgradeSession/instances",
+            "https://example.com/api/types/upgradeSession/instances",
             json=sessions_response,
             status=200,
         )
@@ -184,7 +184,7 @@ class TestClientIntegration:
         }
         responses.add(
             responses.POST,
-            "https://example.com/api/instances/softwareUpgradeSession/123/action/resume",
+            "https://example.com/api/instances/upgradeSession/123/action/resume",
             json=resume_response,
             status=200,
         )

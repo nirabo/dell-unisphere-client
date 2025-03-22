@@ -177,17 +177,20 @@ class TestE2EClient:
         result = client.verify_upgrade_eligibility(candidate_version)
 
         # Verify response structure
-        assert "content" in result
-        assert "isEligible" in result["content"]
-        assert "messages" in result["content"]
+        assert "eligible" in result
+        assert isinstance(result["eligible"], bool)
+        assert "messages" in result
+        assert isinstance(result["messages"], list)
 
     @pytest.mark.skip(
-        reason="Creating an upgrade session can have side effects on the system"
+        reason="Creating an upgrade session can have side effects on the system. "
+        "Enable only in dedicated test environments with proper safeguards."
     )
     def test_create_upgrade_session(self, client):
         """Test creating an upgrade session.
 
-        Note: This test is skipped by default as it can have side effects.
+        Warning: This test is skipped by default as it can modify system state.
+        Only enable in dedicated test environments with proper safeguards.
         """
         # Get candidate versions
         candidates = client.get_candidate_software_versions()
@@ -208,12 +211,14 @@ class TestE2EClient:
         assert "status" in result["content"]
 
     @pytest.mark.skip(
-        reason="Resuming an upgrade session can have side effects on the system"
+        reason="Resuming an upgrade session can have side effects on the system. "
+        "Enable only in dedicated test environments with proper safeguards."
     )
     def test_resume_upgrade_session(self, client):
         """Test resuming an upgrade session.
 
-        Note: This test is skipped by default as it can have side effects.
+        Warning: This test is skipped by default as it can modify system state.
+        Only enable in dedicated test environments with proper safeguards.
         """
         # Get upgrade sessions
         sessions = client.get_software_upgrade_sessions()
