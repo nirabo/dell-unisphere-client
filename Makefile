@@ -48,6 +48,38 @@ else
 	$(PYTHON) -m pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=term
 endif
 
+# Run unit tests only
+test-unit:
+ifeq ($(PKG_MANAGER), uv)
+	$(UV) run python -m pytest $(TEST_DIR)/unit --cov=$(SRC_DIR) --cov-report=term
+else
+	$(PYTHON) -m pytest $(TEST_DIR)/unit --cov=$(SRC_DIR) --cov-report=term
+endif
+
+# Run integration tests only
+test-integration:
+ifeq ($(PKG_MANAGER), uv)
+	$(UV) run python -m pytest $(TEST_DIR)/integration --cov=$(SRC_DIR) --cov-report=term
+else
+	$(PYTHON) -m pytest $(TEST_DIR)/integration --cov=$(SRC_DIR) --cov-report=term
+endif
+
+# Run end-to-end tests only
+test-e2e:
+ifeq ($(PKG_MANAGER), uv)
+	UNISPHERE_URL=http://localhost:8000 UNISPHERE_USERNAME=admin UNISPHERE_PASSWORD=Password123! UNISPHERE_VERIFY_SSL=false $(UV) run python -m pytest $(TEST_DIR)/e2e --cov=$(SRC_DIR) --cov-report=term
+else
+	UNISPHERE_URL=http://localhost:8000 UNISPHERE_USERNAME=admin UNISPHERE_PASSWORD=Password123! UNISPHERE_VERIFY_SSL=false $(PYTHON) -m pytest $(TEST_DIR)/e2e --cov=$(SRC_DIR) --cov-report=term
+endif
+
+# Generate coverage report
+coverage:
+ifeq ($(PKG_MANAGER), uv)
+	$(UV) run python -m pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=term --cov-report=html:coverage_html --cov-report=xml:coverage.xml
+else
+	$(PYTHON) -m pytest $(TEST_DIR) --cov=$(SRC_DIR) --cov-report=term --cov-report=html:coverage_html --cov-report=xml:coverage.xml
+endif
+
 # Run the CLI
 run:
 ifeq ($(PKG_MANAGER), uv)
@@ -131,6 +163,10 @@ help:
 	@echo "  install       - Install package dependencies"
 	@echo "  dev           - Install package in development mode"
 	@echo "  test          - Run tests"
+	@echo "  test-unit     - Run unit tests only"
+	@echo "  test-integration - Run integration tests only"
+	@echo "  test-e2e      - Run end-to-end tests only"
+	@echo "  coverage      - Generate coverage report"
 	@echo "  run           - Run the CLI"
 	@echo "  lint          - Check code style"
 	@echo "  format        - Format code"
@@ -142,4 +178,4 @@ help:
 	@echo "  upload-test   - Upload to TestPyPI"
 	@echo "  help          - Show this help message"
 
-.PHONY: all venv install dev test run lint format clean build pip-install pip-uninstall upload upload-test help
+.PHONY: all venv install dev test test-unit test-integration test-e2e coverage run lint format clean build pip-install pip-uninstall upload upload-test help
