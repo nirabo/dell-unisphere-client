@@ -17,7 +17,7 @@ def get_version() -> str:
         return importlib.metadata.version("dell-unisphere-client")
     except importlib.metadata.PackageNotFoundError:
         logger.warning("Package not installed, version information not available")
-        return "0.1.0"  # Default version
+        return "0.2.0"  # Default version
 
 
 # Version constant for easy access

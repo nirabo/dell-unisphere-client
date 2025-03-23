@@ -6,10 +6,11 @@ A Python client library and command-line interface for interacting with Dell EMC
 
 - Complete API client for Dell Unisphere REST API
 - Command-line interface for all API operations
-- Authentication and session management
+- Authentication and session management with persistent sessions
 - CSRF token handling
-- Software upgrade management
+- Software upgrade management with monitoring capabilities
 - File upload support
+- Comprehensive error handling
 
 ## Installation
 
@@ -134,3 +135,7 @@ uv install -e .
 ```bash
 make test
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
