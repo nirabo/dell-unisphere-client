@@ -17,6 +17,7 @@ def mock_response():
             self.headers = headers or {}
             self.text = text
             self.cookies = cookies or {}
+            self._is_mock = True  # Flag to identify mock responses
 
         def json(self):
             return self.json_data
@@ -32,6 +33,10 @@ def mock_response():
 def mock_requests(monkeypatch):
     """Create a mock for the requests library."""
     mock = MagicMock()
+    # Patch the requests module
+    monkeypatch.setattr("requests.Session", MagicMock)
+    monkeypatch.setattr("requests.get", mock.get)
+    monkeypatch.setattr("requests.post", mock.post)
     monkeypatch.setattr("dell_unisphere_client.client.requests", mock)
     return mock
 
@@ -39,7 +44,7 @@ def mock_requests(monkeypatch):
 @pytest.fixture
 def mock_client():
     """Create a mock client for testing."""
-    from dell_unisphere_client.client import UnisphereClient
+    from dell_unisphere_client import UnisphereClient
 
     client = MagicMock(spec=UnisphereClient)
     client.base_url = "https://example.com"
