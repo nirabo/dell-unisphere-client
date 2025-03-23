@@ -48,7 +48,7 @@ class TestUnisphereClient:
 
         # Call the method
         result = client.login()
-        
+
         # Manually set the CSRF token for test
         client.csrf_token = "test-token"
 

@@ -39,10 +39,10 @@ from rich.logging import RichHandler
 from rich.table import Table
 
 from . import __version__
-from .client import (
+from dell_unisphere_client import (
     AuthenticationError,
-    UnisphereClient,
     UnisphereClientError,
+    UnisphereClient,
 )
 
 # Setup logging
@@ -511,6 +511,7 @@ def cmd_software_version(args: argparse.Namespace) -> None:
     """
     try:
         client = get_client()
+        client.login()
         result = client.get_installed_software_version()
 
         if hasattr(args, "json_output") and args.json_output:
@@ -549,6 +550,7 @@ def cmd_candidate_versions(args: argparse.Namespace) -> None:
     """
     try:
         client = get_client()
+        client.login()
         result = client.get_candidate_software_versions()
 
         if hasattr(args, "json_output") and args.json_output:
@@ -586,6 +588,7 @@ def cmd_upgrade_sessions(args: argparse.Namespace) -> None:
     """
     try:
         client = get_client()
+        client.login()
         result = client.get_software_upgrade_sessions()
 
         if hasattr(args, "json_output") and args.json_output:
@@ -689,6 +692,7 @@ def cmd_upload_package(args: argparse.Namespace) -> None:
             return
 
         client = get_client()
+        client.login()
         result = client.upload_package(args.file)
 
         if hasattr(args, "json_output") and args.json_output:
