@@ -9,7 +9,7 @@ import os
 import pytest
 import json
 
-from dell_unisphere_client.client import UnisphereClient
+from dell_unisphere_client import UnisphereClient
 
 
 # Skip all tests in this module if SKIP_E2E_TESTS is set

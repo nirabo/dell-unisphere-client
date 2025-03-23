@@ -13,7 +13,7 @@ import pytest
 
 from datetime import datetime
 
-from dell_unisphere_client.client import UnisphereClient
+from dell_unisphere_client import UnisphereClient
 
 # Configure logging
 logging.basicConfig(

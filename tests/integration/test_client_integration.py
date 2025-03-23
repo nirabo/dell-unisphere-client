@@ -1,9 +1,9 @@
 """Integration tests for the UnisphereClient with mock API."""
 
 import responses
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
-from dell_unisphere_client.client import UnisphereClient
+from dell_unisphere_client import UnisphereClient
 
 
 class TestClientIntegration:
@@ -55,15 +55,25 @@ class TestClientIntegration:
     @responses.activate
     def test_software_version_workflow(self):
         """Test the complete software version workflow."""
-        # Setup client with authenticated session
+        # Mock login response
+        responses.add(
+            responses.GET,
+            "https://example.com/api/types/loginSessionInfo/instances",
+            json={"content": {"id": "session123"}},
+            status=200,
+            headers={
+                "EMC-CSRF-TOKEN": "test-token",
+                "Set-Cookie": "mod_sec_emc=test-cookie",
+            },
+        )
+
+        # Setup client
         client = UnisphereClient(
             base_url="https://example.com",
             username="testuser",
             password="testpass",
             verify_ssl=True,
         )
-        client.csrf_token = "test-token"
-        client.session = MagicMock()
 
         # Mock installed software version response
         installed_version_response = {
@@ -144,15 +154,25 @@ class TestClientIntegration:
     @responses.activate
     def test_upgrade_session_workflow(self):
         """Test the complete upgrade session workflow."""
-        # Setup client with authenticated session
+        # Mock login response
+        responses.add(
+            responses.GET,
+            "https://example.com/api/types/loginSessionInfo/instances",
+            json={"content": {"id": "session123"}},
+            status=200,
+            headers={
+                "EMC-CSRF-TOKEN": "test-token",
+                "Set-Cookie": "mod_sec_emc=test-cookie",
+            },
+        )
+
+        # Setup client
         client = UnisphereClient(
             base_url="https://example.com",
             username="testuser",
             password="testpass",
             verify_ssl=True,
         )
-        client.csrf_token = "test-token"
-        client.session = MagicMock()
 
         # Mock upgrade sessions response
         sessions_response = {
@@ -199,15 +219,25 @@ class TestClientIntegration:
     @responses.activate
     def test_upload_package_workflow(self):
         """Test the package upload workflow."""
-        # Setup client with authenticated session
+        # Mock login response
+        responses.add(
+            responses.GET,
+            "https://example.com/api/types/loginSessionInfo/instances",
+            json={"content": {"id": "session123"}},
+            status=200,
+            headers={
+                "EMC-CSRF-TOKEN": "test-token",
+                "Set-Cookie": "mod_sec_emc=test-cookie",
+            },
+        )
+
+        # Setup client
         client = UnisphereClient(
             base_url="https://example.com",
             username="testuser",
             password="testpass",
             verify_ssl=True,
         )
-        client.csrf_token = "test-token"
-        client.session = MagicMock()
 
         # Mock upload response
         upload_response = {"content": {"id": "456", "version": "5.4.0.0.5.150"}}
@@ -218,11 +248,11 @@ class TestClientIntegration:
             status=200,
         )
 
-        # Mock file open
+        # We need to mock the file open operation
         mock_file = MagicMock()
-        mock_open = MagicMock(return_value=mock_file)
+        mock_file.read = MagicMock(return_value=b"mock file content")
 
-        # Execute workflow
-        with patch("builtins.open", mock_open):
+        # Execute workflow with mocked file open
+        with patch("builtins.open", mock_open(mock=mock_file)):
             upload_result = client.upload_package("/path/to/package.bin")
             assert upload_result == upload_response

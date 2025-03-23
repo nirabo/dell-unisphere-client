@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from dell_unisphere_client.client import UnisphereClient
+from dell_unisphere_client import UnisphereClient
 
 
 class TestUnisphereClient:
@@ -23,7 +23,6 @@ class TestUnisphereClient:
         assert client.password == "testpass"
         assert client.verify_ssl is True
         assert client.session is None
-        assert client.csrf_token is None
 
     @pytest.mark.skip(reason="Test needs to be updated for new client implementation")
     def test_login(self, mock_requests, mock_response):
