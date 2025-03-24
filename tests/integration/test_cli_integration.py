@@ -194,7 +194,7 @@ class TestCLIIntegration:
             # Verify verify_upgrade_eligibility was called
             # Note: parameter is passed through CLI but not used by the actual API endpoint
             mock_client.verify_upgrade_eligibility.assert_called_once_with(
-                "5.4.0.0.5.150"
+                "5.4.0.0.5.150", raw_json=False
             )
 
             # Step 6: Create upgrade

@@ -290,6 +290,7 @@ class TestCLI:
 
     def test_cmd_verify_upgrade(self):
         """Test cmd_verify_upgrade function."""
+        # Test 1: Standard output
         args = argparse.Namespace(version="5.4.0.0.5.150")
 
         with (
@@ -310,9 +311,90 @@ class TestCLI:
             mock_get_client.assert_called_once()
             # Note: parameter is passed through CLI but not used by API
             mock_client.verify_upgrade_eligibility.assert_called_once_with(
-                "5.4.0.0.5.150"
+                "5.4.0.0.5.150", raw_json=False
             )
             mock_print.assert_called()
+
+    def test_cmd_verify_upgrade_raw_json(self):
+        """Test cmd_verify_upgrade function with raw_json option."""
+        # Test with raw_json option
+        args = argparse.Namespace(version="5.4.0.0.5.150", raw_json=True)
+
+        with (
+            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
+            patch("dell_unisphere_client.cli.console.print") as mock_print,
+        ):
+            mock_client = MagicMock()
+            # Raw API response format
+            mock_client.verify_upgrade_eligibility.return_value = {
+                "content": {"isEligible": True, "messages": []}
+            }
+            mock_get_client.return_value = mock_client
+
+            cmd_verify_upgrade(args)
+
+            mock_get_client.assert_called_once()
+            # Should call with raw_json=True
+            mock_client.verify_upgrade_eligibility.assert_called_once_with(
+                "5.4.0.0.5.150", raw_json=True
+            )
+            mock_print.assert_called()
+
+    def test_cmd_verify_upgrade_json_output(self):
+        """Test cmd_verify_upgrade function with json_output option."""
+        # Test with json_output option
+        args = argparse.Namespace(version="5.4.0.0.5.150", json_output=True)
+
+        with (
+            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
+            patch("dell_unisphere_client.cli.print_json") as mock_print_json,
+            patch("dell_unisphere_client.cli.console.print") as mock_print,
+        ):
+            mock_client = MagicMock()
+            mock_client.verify_upgrade_eligibility.return_value = {
+                "eligible": True,
+                "messages": [],
+                "requiredPatches": [],
+                "requiredHotfixes": [],
+            }
+            mock_get_client.return_value = mock_client
+
+            cmd_verify_upgrade(args)
+
+            mock_get_client.assert_called_once()
+            mock_client.verify_upgrade_eligibility.assert_called_once_with(
+                "5.4.0.0.5.150", raw_json=False
+            )
+            mock_print_json.assert_called_once()
+            mock_print.assert_not_called()
+
+    def test_cmd_verify_upgrade_raw_json_and_json_output(self):
+        """Test cmd_verify_upgrade function with both raw_json and json_output options."""
+        # Test with both raw_json and json_output options
+        args = argparse.Namespace(
+            version="5.4.0.0.5.150", raw_json=True, json_output=True
+        )
+
+        with (
+            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
+            patch("dell_unisphere_client.cli.print_json") as mock_print_json,
+            patch("dell_unisphere_client.cli.console.print") as mock_print,
+        ):
+            mock_client = MagicMock()
+            # Raw API response format
+            mock_client.verify_upgrade_eligibility.return_value = {
+                "content": {"isEligible": True, "messages": []}
+            }
+            mock_get_client.return_value = mock_client
+
+            cmd_verify_upgrade(args)
+
+            mock_get_client.assert_called_once()
+            mock_client.verify_upgrade_eligibility.assert_called_once_with(
+                "5.4.0.0.5.150", raw_json=True
+            )
+            mock_print_json.assert_called_once()
+            mock_print.assert_not_called()
 
     def test_cmd_create_upgrade(self):
         """Test cmd_create_upgrade function."""

@@ -298,7 +298,7 @@ class UnisphereClient:
         return self.upgrade_api.get_software_upgrade_session(session_id)
 
     def verify_upgrade_eligibility(
-        self, candidate_version_id: str = None
+        self, candidate_version_id: str = None, raw_json: bool = False
     ) -> Dict[str, Any]:
         """Verify upgrade eligibility.
 
@@ -306,16 +306,25 @@ class UnisphereClient:
             candidate_version_id: The candidate version ID (optional, not used by the API).
                 This parameter is kept for backward compatibility, but the verifyUpgradeEligibility
                 endpoint is stateless and doesn't require any parameters.
+            raw_json: If True, returns the raw JSON response from the API instead of the
+                transformed response. Useful for debugging or accessing additional fields.
 
         Returns:
-            Dictionary containing eligibility information with keys:
-            - eligible: boolean indicating if upgrade is eligible
-            - messages: list of messages about eligibility
-            - requiredPatches: list of required patches
-            - requiredHotfixes: list of required hotfixes
+            If raw_json is False (default):
+                Dictionary containing eligibility information with keys:
+                - eligible: boolean indicating if upgrade is eligible
+                - messages: list of messages about eligibility
+                - requiredPatches: list of required patches
+                - requiredHotfixes: list of required hotfixes
+            If raw_json is True:
+                Raw JSON response from the API
         """
         self._ensure_logged_in()
         response = self.upgrade_api.verify_upgrade_eligibility(candidate_version_id)
+
+        # Return raw response if requested
+        if raw_json:
+            return response
 
         # Transform response to match mock API format
         return {

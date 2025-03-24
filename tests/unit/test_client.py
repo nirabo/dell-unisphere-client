@@ -222,11 +222,30 @@ class TestUnisphereClient:
         # Configure mock requests to return our response
         mock_requests.post.return_value = response
 
-        # Call the method - note that parameter is not used by API
+        # Test 1: Default behavior (transformed response)
         result = client.verify_upgrade_eligibility("5.4.0.0.5.150")
 
-        # Assertions
+        # Assertions for default behavior
         assert result == expected_result
+        mock_requests.post.assert_called_once_with(
+            "https://example.com/api/types/upgradeSession/action/verifyUpgradeEligibility",
+            headers={
+                "X-EMC-REST-CLIENT": "true",
+                "EMC-CSRF-TOKEN": "test-token",
+                "Content-Type": "application/json",
+            },
+            json={},  # Empty payload for stateless endpoint
+            verify=True,
+        )
+
+        # Reset mock for the second test
+        mock_requests.reset_mock()
+
+        # Test 2: Raw JSON response
+        raw_result = client.verify_upgrade_eligibility("5.4.0.0.5.150", raw_json=True)
+
+        # Assertions for raw JSON behavior
+        assert raw_result == response_data
         mock_requests.post.assert_called_once_with(
             "https://example.com/api/types/upgradeSession/action/verifyUpgradeEligibility",
             headers={

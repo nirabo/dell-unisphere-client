@@ -287,6 +287,12 @@ def create_parser() -> argparse.ArgumentParser:
         dest="json_output",
         help="Output in JSON format",
     )
+    verify_upgrade_parser.add_argument(
+        "--raw-json",
+        action="store_true",
+        dest="raw_json",
+        help="Return raw JSON response from the API instead of the transformed response",
+    )
 
     # Create upgrade command
     create_upgrade_parser = subparsers.add_parser(
@@ -628,12 +634,18 @@ def cmd_verify_upgrade(args: argparse.Namespace) -> None:
         client = get_client()
         # Note: The version parameter is kept for backward compatibility
         # but the verifyUpgradeEligibility endpoint is stateless and doesn't use it
-        result = client.verify_upgrade_eligibility(args.version)
+        raw_json = hasattr(args, "raw_json") and args.raw_json
+        result = client.verify_upgrade_eligibility(args.version, raw_json=raw_json)
 
         if hasattr(args, "json_output") and args.json_output:
             print_json(result)
         else:
             console.print("Upgrade eligibility verified successfully.")
+            if raw_json:
+                console.print("[yellow]Note: Showing raw API response[/yellow]")
+            console.print(
+                f"Eligible: {result.get('eligible', result.get('content', {}).get('isEligible', False))}"
+            )
     except UnisphereClientError as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         sys.exit(1)

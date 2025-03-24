@@ -140,6 +140,10 @@ candidate_id = prepare_result["id"]
 # Verify eligibility before proceeding
 # Note: verify_upgrade_eligibility is a stateless endpoint and doesn't require parameters
 eligibility = client.verify_upgrade_eligibility()
+
+# For debugging or accessing additional fields, you can get the raw API response
+# raw_response = client.verify_upgrade_eligibility(raw_json=True)
+
 if not eligibility["eligible"]:
     print("Upgrade not eligible!")
     for message in eligibility["messages"]:
@@ -189,6 +193,12 @@ $ dell-unisphere-client --host unisphere.example.com --username admin software u
 
 # Check upgrade eligibility
 $ dell-unisphere-client --host unisphere.example.com --username admin upgrade verify --candidate-id candidate_12345
+
+# Check upgrade eligibility with raw API response (for debugging)
+$ dell-unisphere-client --host unisphere.example.com --username admin upgrade verify --candidate-id candidate_12345 --raw-json
+
+# Get upgrade eligibility in JSON format
+$ dell-unisphere-client --host unisphere.example.com --username admin upgrade verify --candidate-id candidate_12345 -j
 
 # Create and monitor upgrade
 $ dell-unisphere-client --host unisphere.example.com --username admin upgrade create --candidate-id candidate_12345 --monitor
