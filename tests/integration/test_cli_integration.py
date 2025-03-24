@@ -69,6 +69,7 @@ class TestCLIIntegration:
                 username="testuser",
                 password="testpass",
                 verify_ssl=True,
+                verbose=False,
             )
 
     def test_get_client_with_override(self, temp_config_file):
@@ -95,6 +96,7 @@ class TestCLIIntegration:
                 username="testuser",
                 password="newpass",
                 verify_ssl=True,
+                verbose=False,
             )
 
     def test_cli_workflow(self, temp_config_file, capsys):

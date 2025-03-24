@@ -28,7 +28,8 @@ class UnisphereClient:
         username: str,
         password: str,
         verify_ssl: bool = True,
-        timeout: int = 30,
+        timeout: int = 600,
+        verbose: bool = False,
     ):
         """Initialize the client.
 
@@ -38,12 +39,14 @@ class UnisphereClient:
             password: Password for authentication.
             verify_ssl: Whether to verify SSL certificates.
             timeout: Request timeout in seconds.
+            verbose: Whether to print detailed request and response information.
         """
         self.base_url = base_url
         self.username = username
         self.password = password
         self.verify_ssl = verify_ssl
         self.timeout = timeout
+        self.verbose = verbose
 
         # Initialize session manager
         self.session_manager = SessionManager(
@@ -52,6 +55,7 @@ class UnisphereClient:
             password=password,
             verify_ssl=verify_ssl,
             timeout=timeout,
+            verbose=verbose,
         )
 
         # Initialize API clients
@@ -198,6 +202,7 @@ class UnisphereClient:
             csrf_token=self.csrf_token,
             verify_ssl=self.verify_ssl,
             timeout=self.timeout,
+            verbose=self.verbose,
         )
 
         self.software_api = SoftwareApi(
@@ -206,6 +211,7 @@ class UnisphereClient:
             csrf_token=self.csrf_token,
             verify_ssl=self.verify_ssl,
             timeout=self.timeout,
+            verbose=self.verbose,
         )
 
         self.upgrade_api = UpgradeApi(
@@ -214,6 +220,7 @@ class UnisphereClient:
             csrf_token=self.csrf_token,
             verify_ssl=self.verify_ssl,
             timeout=self.timeout,
+            verbose=self.verbose,
         )
 
     def logout(self) -> bool:

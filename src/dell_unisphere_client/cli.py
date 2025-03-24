@@ -101,6 +101,7 @@ def get_client(
     username: Optional[str] = None,
     password: Optional[str] = None,
     verify_ssl: Optional[bool] = None,
+    verbose: bool = False,
 ) -> UnisphereClient:
     """Get a configured client instance.
 
@@ -109,6 +110,7 @@ def get_client(
         username: Username for authentication.
         password: Password for authentication.
         verify_ssl: Whether to verify SSL certificates.
+        verbose: Whether to print detailed request and response information.
 
     Returns:
         Configured client instance.
@@ -130,6 +132,7 @@ def get_client(
         username=config["username"],
         password=config["password"],
         verify_ssl=config["verify_ssl"],
+        verbose=verbose,
     )
 
 
@@ -168,6 +171,17 @@ def print_table(data: List[Dict[str, Any]], title: str) -> None:
     console.print(table)
 
 
+def add_common_arguments(parser):
+    """Add common arguments to a parser.
+
+    Args:
+        parser: Parser to add arguments to.
+    """
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose output"
+    )
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for the CLI.
 
@@ -178,6 +192,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dell Unisphere CLI - A command-line interface for Dell Unisphere REST API"
     )
+    # Add global verbose flag
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose output"
     )
@@ -185,10 +200,12 @@ def create_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Version command
-    subparsers.add_parser("version", help="Show version information")
+    version_parser = subparsers.add_parser("version", help="Show version information")
+    add_common_arguments(version_parser)
 
     # Configure command
     configure_parser = subparsers.add_parser("configure", help="Configure the client")
+    add_common_arguments(configure_parser)
     configure_parser.add_argument(
         "-u", "--url", required=True, help="Base URL of the Unisphere API"
     )
@@ -206,6 +223,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Login command
     login_parser = subparsers.add_parser("login", help="Login to the Unisphere API")
+    add_common_arguments(login_parser)
     login_parser.add_argument("-u", "--url", help="Base URL of the Unisphere API")
     login_parser.add_argument("-U", "--username", help="Username for authentication")
     login_parser.add_argument("-P", "--password", help="Password for authentication")
@@ -223,12 +241,16 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Logout command
-    subparsers.add_parser("logout", help="Logout from the Unisphere API")
+    logout_parser = subparsers.add_parser(
+        "logout", help="Logout from the Unisphere API"
+    )
+    add_common_arguments(logout_parser)
 
     # System info command
     system_info_parser = subparsers.add_parser(
         "system-info", help="Get basic system information"
     )
+    add_common_arguments(system_info_parser)
     system_info_parser.add_argument(
         "-j",
         "--json",
@@ -241,6 +263,7 @@ def create_parser() -> argparse.ArgumentParser:
     software_version_parser = subparsers.add_parser(
         "software-version", help="Get installed software version information"
     )
+    add_common_arguments(software_version_parser)
     software_version_parser.add_argument(
         "-j",
         "--json",
@@ -253,6 +276,7 @@ def create_parser() -> argparse.ArgumentParser:
     candidate_versions_parser = subparsers.add_parser(
         "candidate-versions", help="Get candidate software versions"
     )
+    add_common_arguments(candidate_versions_parser)
     candidate_versions_parser.add_argument(
         "-j",
         "--json",
@@ -265,6 +289,7 @@ def create_parser() -> argparse.ArgumentParser:
     upgrade_sessions_parser = subparsers.add_parser(
         "upgrade-sessions", help="Get software upgrade sessions"
     )
+    add_common_arguments(upgrade_sessions_parser)
     upgrade_sessions_parser.add_argument(
         "-j",
         "--json",
@@ -277,8 +302,11 @@ def create_parser() -> argparse.ArgumentParser:
     verify_upgrade_parser = subparsers.add_parser(
         "verify-upgrade", help="Verify upgrade eligibility"
     )
+    add_common_arguments(verify_upgrade_parser)
     verify_upgrade_parser.add_argument(
-        "--version", required=True, help="Candidate version ID"
+        "--version",
+        required=False,
+        help="Candidate version ID (optional, not used by the API)",
     )
     verify_upgrade_parser.add_argument(
         "-j",
@@ -298,6 +326,7 @@ def create_parser() -> argparse.ArgumentParser:
     create_upgrade_parser = subparsers.add_parser(
         "create-upgrade", help="Create a software upgrade session"
     )
+    add_common_arguments(create_upgrade_parser)
     create_upgrade_parser.add_argument(
         "--version", required=True, help="Candidate version ID"
     )
@@ -316,6 +345,7 @@ def create_parser() -> argparse.ArgumentParser:
     resume_upgrade_parser = subparsers.add_parser(
         "resume-upgrade", help="Resume a software upgrade session"
     )
+    add_common_arguments(resume_upgrade_parser)
     resume_upgrade_parser.add_argument("--id", required=True, help="Session ID")
     resume_upgrade_parser.add_argument(
         "-j",
@@ -329,6 +359,7 @@ def create_parser() -> argparse.ArgumentParser:
     upload_package_parser = subparsers.add_parser(
         "upload-package", help="Upload a software package"
     )
+    add_common_arguments(upload_package_parser)
     upload_package_parser.add_argument(
         "--file", required=True, help="Path to the software package file"
     )
@@ -344,6 +375,7 @@ def create_parser() -> argparse.ArgumentParser:
     prepare_software_parser = subparsers.add_parser(
         "prepare-software", help="Prepare an uploaded software package"
     )
+    add_common_arguments(prepare_software_parser)
     prepare_software_parser.add_argument(
         "--file-id", required=True, help="ID of the uploaded file"
     )
@@ -359,6 +391,7 @@ def create_parser() -> argparse.ArgumentParser:
     monitor_upgrade_parser = subparsers.add_parser(
         "monitor-upgrade", help="Monitor an upgrade session until completion"
     )
+    add_common_arguments(monitor_upgrade_parser)
     monitor_upgrade_parser.add_argument("--id", required=True, help="Session ID")
     monitor_upgrade_parser.add_argument(
         "--interval",
@@ -444,9 +477,13 @@ def cmd_login(args: argparse.Namespace) -> None:
             and hasattr(args, "username")
             and hasattr(args, "verify_ssl")
         ):
-            client = get_client(args.url, args.username, password, args.verify_ssl)
+            verbose = getattr(args, "verbose", False)
+            client = get_client(
+                args.url, args.username, password, args.verify_ssl, verbose=verbose
+            )
         else:
-            client = get_client(password=password)
+            verbose = getattr(args, "verbose", False)
+            client = get_client(password=password, verbose=verbose)
 
         client.login()
         console.print("Login successful.")
@@ -465,7 +502,8 @@ def cmd_logout(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
         client.logout()
         console.print("Logout successful.")
     except UnisphereClientError as e:
@@ -480,7 +518,8 @@ def cmd_system_info(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
         client.login()
         result = client.get_system_info()
 
@@ -516,7 +555,8 @@ def cmd_software_version(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
         client.login()
         result = client.get_installed_software_version()
 
@@ -555,7 +595,8 @@ def cmd_candidate_versions(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
         client.login()
         result = client.get_candidate_software_versions()
 
@@ -593,7 +634,8 @@ def cmd_upgrade_sessions(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
         client.login()
         result = client.get_software_upgrade_sessions()
 
@@ -631,11 +673,16 @@ def cmd_verify_upgrade(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
-        # Note: The version parameter is kept for backward compatibility
-        # but the verifyUpgradeEligibility endpoint is stateless and doesn't use it
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
+        client.login()
+        # Note: The verifyUpgradeEligibility endpoint is stateless and doesn't use any parameters
+        # The version parameter is kept for backward compatibility but not used
         raw_json = hasattr(args, "raw_json") and args.raw_json
-        result = client.verify_upgrade_eligibility(args.version, raw_json=raw_json)
+        version = getattr(
+            args, "version", None
+        )  # Get version if provided, otherwise None
+        result = client.verify_upgrade_eligibility(version, raw_json=raw_json)
 
         if hasattr(args, "json_output") and args.json_output:
             print_json(result)
@@ -658,7 +705,9 @@ def cmd_create_upgrade(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
+        client.login()
         # For the test case, we need to call without the description parameter
         result = client.create_upgrade_session(args.version)
 
@@ -678,7 +727,9 @@ def cmd_resume_upgrade(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
+        client.login()
         result = client.resume_upgrade_session(args.id)
 
         if hasattr(args, "json_output") and args.json_output:
@@ -705,7 +756,8 @@ def cmd_upload_package(args: argparse.Namespace) -> None:
                 sys.exit(1)
             return
 
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
         client.login()
         result = client.upload_package(args.file)
 
@@ -737,7 +789,9 @@ def cmd_prepare_software(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
+        client.login()
         result = client.prepare_software(args.file_id)
 
         if hasattr(args, "json_output") and args.json_output:
@@ -768,7 +822,9 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
         args: Command line arguments.
     """
     try:
-        client = get_client()
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
+        client.login()
 
         # Display initial message
         console.print(f"Monitoring upgrade session {args.id}...")

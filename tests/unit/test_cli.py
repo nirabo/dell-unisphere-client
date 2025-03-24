@@ -191,7 +191,9 @@ class TestCLI:
             cmd_login(args)
 
             mock_getpass.assert_called_once_with("Password: ")
-            mock_get_client.assert_called_once_with(password="promptedpass")
+            mock_get_client.assert_called_once_with(
+                password="promptedpass", verbose=False
+            )
             mock_client.login.assert_called_once()
 
     def test_cmd_logout(self):
@@ -365,8 +367,37 @@ class TestCLI:
             mock_client.verify_upgrade_eligibility.assert_called_once_with(
                 "5.4.0.0.5.150", raw_json=False
             )
-            mock_print_json.assert_called_once()
+            mock_print_json.assert_called_once_with(
+                mock_client.verify_upgrade_eligibility.return_value
+            )
             mock_print.assert_not_called()
+
+    def test_cmd_verify_upgrade_no_version(self):
+        """Test cmd_verify_upgrade function without version parameter."""
+        # Test without version parameter (which is optional and not used by API)
+        args = argparse.Namespace()
+
+        with (
+            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
+            patch("dell_unisphere_client.cli.console.print") as mock_print,
+        ):
+            mock_client = MagicMock()
+            mock_client.verify_upgrade_eligibility.return_value = {
+                "eligible": True,
+                "messages": [],
+                "requiredPatches": [],
+                "requiredHotfixes": [],
+            }
+            mock_get_client.return_value = mock_client
+
+            cmd_verify_upgrade(args)
+
+            mock_get_client.assert_called_once()
+            # Should call with None for version and raw_json=False
+            mock_client.verify_upgrade_eligibility.assert_called_once_with(
+                None, raw_json=False
+            )
+            mock_print.assert_called()
 
     def test_cmd_verify_upgrade_raw_json_and_json_output(self):
         """Test cmd_verify_upgrade function with both raw_json and json_output options."""

@@ -24,6 +24,7 @@ class SessionManager:
         password: str,
         verify_ssl: bool = True,
         timeout: int = 30,
+        verbose: bool = False,
     ):
         """Initialize the session manager.
 
@@ -33,12 +34,14 @@ class SessionManager:
             password: Password for authentication.
             verify_ssl: Whether to verify SSL certificates.
             timeout: Request timeout in seconds.
+            verbose: Whether to print detailed request and response information.
         """
         self.base_url = base_url
         self.username = username
         self.password = password
         self.verify_ssl = verify_ssl
         self.timeout = timeout
+        self.verbose = verbose
         self.session = None
         self.csrf_token = None
         self._logged_in = False
