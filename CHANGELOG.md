@@ -5,6 +5,18 @@ All notable changes to the Dell Unisphere Client will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-03-24
+
+### Added
+- Verbose CLI functionality with `--verbose` flag for all commands
+- Detailed request and response visualization for API calls
+- Enhanced debugging capabilities for API interactions
+
+### Changed
+- Improved error handling for authentication failures
+- Enhanced code formatting and style consistency
+- Updated test suite to support verbose mode
+
 ## [0.2.0] - 2025-03-23
 
 ### Added

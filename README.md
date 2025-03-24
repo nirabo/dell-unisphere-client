@@ -51,7 +51,9 @@ You will be prompted for your password.
 - `unisphere resume-upgrade <session-id>`: Resume a software upgrade session
 - `unisphere upload-package <file-path>`: Upload a software package
 
-All commands support the `--json` flag to output the raw JSON response.
+All commands support the following flags:
+- `--json` - Output the raw JSON response
+- `--verbose` - Enable detailed request and response visualization for API calls
 
 ### Library Usage
 
@@ -66,6 +68,7 @@ client = UnisphereClient(
     username="admin",
     password="Password123!",
     verify_ssl=False,
+    verbose=True,  # Enable detailed request and response output
 )
 
 # Login to the API

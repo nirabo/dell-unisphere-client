@@ -28,7 +28,7 @@ class TestVersion:
             version = get_version()
 
             mock_version.assert_called_once_with("dell-unisphere-client")
-            assert version == "0.2.0"  # Default version
+            assert version == "0.3.0"  # Default version
 
     def test_version_constant(self):
         """Test that __version__ is defined."""
