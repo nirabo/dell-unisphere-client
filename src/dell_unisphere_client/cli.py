@@ -38,7 +38,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
 
-from . import __version__
+from dell_unisphere_client import __version__
 from dell_unisphere_client import (
     AuthenticationError,
     UnisphereClientError,
