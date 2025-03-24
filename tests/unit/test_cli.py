@@ -208,14 +208,11 @@ class TestCLI:
             mock_get_client.assert_called_once()
             mock_client.logout.assert_called_once()
 
-    def test_cmd_system_info(self):
+    def test_cmd_system_info(self, capsys):
         """Test cmd_system_info function."""
         args = argparse.Namespace()
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.get_system_info.return_value = {
                 "content": {"name": "Test System"}
@@ -224,18 +221,16 @@ class TestCLI:
 
             cmd_system_info(args)
 
+            captured = capsys.readouterr()
+            assert "Test System" in captured.out
             mock_get_client.assert_called_once()
             mock_client.get_system_info.assert_called_once()
-            mock_print.assert_called()
 
-    def test_cmd_software_version(self):
+    def test_cmd_software_version(self, capsys):
         """Test cmd_software_version function."""
         args = argparse.Namespace()
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.get_installed_software_version.return_value = {
                 "entries": [{"content": {"version": "5.3.0.0.5.120"}}]
@@ -244,18 +239,16 @@ class TestCLI:
 
             cmd_software_version(args)
 
+            captured = capsys.readouterr()
+            assert "5.3.0.0.5.120" in captured.out
             mock_get_client.assert_called_once()
             mock_client.get_installed_software_version.assert_called_once()
-            mock_print.assert_called()
 
-    def test_cmd_candidate_versions(self):
+    def test_cmd_candidate_versions(self, capsys):
         """Test cmd_candidate_versions function."""
         args = argparse.Namespace()
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.get_candidate_software_versions.return_value = {
                 "entries": [{"content": {"version": "5.4.0.0.5.150"}}]
@@ -264,18 +257,16 @@ class TestCLI:
 
             cmd_candidate_versions(args)
 
+            captured = capsys.readouterr()
+            assert "5.4.0.0.5.150" in captured.out
             mock_get_client.assert_called_once()
             mock_client.get_candidate_software_versions.assert_called_once()
-            mock_print.assert_called()
 
-    def test_cmd_upgrade_sessions(self):
+    def test_cmd_upgrade_sessions(self, capsys):
         """Test cmd_upgrade_sessions function."""
         args = argparse.Namespace()
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.get_software_upgrade_sessions.return_value = {
                 "entries": [{"content": {"id": "123", "status": "Paused"}}]
@@ -284,18 +275,17 @@ class TestCLI:
 
             cmd_upgrade_sessions(args)
 
+            captured = capsys.readouterr()
+            assert "123" in captured.out
+            assert "Paused" in captured.out
             mock_get_client.assert_called_once()
             mock_client.get_software_upgrade_sessions.assert_called_once()
-            mock_print.assert_called()
 
-    def test_cmd_verify_upgrade(self):
+    def test_cmd_verify_upgrade(self, capsys):
         """Test cmd_verify_upgrade function."""
         args = argparse.Namespace(version="5.4.0.0.5.150")
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.verify_upgrade_eligibility.return_value = {
                 "content": {"isEligible": True, "messages": []}
@@ -304,20 +294,18 @@ class TestCLI:
 
             cmd_verify_upgrade(args)
 
+            captured = capsys.readouterr()
+            assert "Upgrade eligibility verified" in captured.out
             mock_get_client.assert_called_once()
             mock_client.verify_upgrade_eligibility.assert_called_once_with(
                 "5.4.0.0.5.150"
             )
-            mock_print.assert_called()
 
-    def test_cmd_create_upgrade(self):
+    def test_cmd_create_upgrade(self, capsys):
         """Test cmd_create_upgrade function."""
         args = argparse.Namespace(version="5.4.0.0.5.150")
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.create_upgrade_session.return_value = {
                 "content": {"id": "123", "status": "Scheduled"}
@@ -326,18 +314,17 @@ class TestCLI:
 
             cmd_create_upgrade(args)
 
+            captured = capsys.readouterr()
+            assert "123" in captured.out
+            assert "Scheduled" in captured.out
             mock_get_client.assert_called_once()
             mock_client.create_upgrade_session.assert_called_once_with("5.4.0.0.5.150")
-            mock_print.assert_called()
 
-    def test_cmd_resume_upgrade(self):
+    def test_cmd_resume_upgrade(self, capsys):
         """Test cmd_resume_upgrade function."""
         args = argparse.Namespace(id="123")
 
-        with (
-            patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
-        ):
+        with patch("dell_unisphere_client.cli.get_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.resume_upgrade_session.return_value = {
                 "content": {"id": "123", "status": "InProgress"}
@@ -346,17 +333,18 @@ class TestCLI:
 
             cmd_resume_upgrade(args)
 
+            captured = capsys.readouterr()
+            assert "123" in captured.out
+            assert "InProgress" in captured.out
             mock_get_client.assert_called_once()
             mock_client.resume_upgrade_session.assert_called_once_with("123")
-            mock_print.assert_called()
 
-    def test_cmd_upload_package(self):
+    def test_cmd_upload_package(self, capsys):
         """Test cmd_upload_package function."""
         args = argparse.Namespace(file="/path/to/package.bin")
 
         with (
             patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
             patch("os.path.exists", return_value=True),
         ):
             mock_client = MagicMock()
@@ -365,25 +353,24 @@ class TestCLI:
 
             cmd_upload_package(args)
 
+            captured = capsys.readouterr()
+            assert "123" in captured.out
             mock_get_client.assert_called_once()
             mock_client.upload_package.assert_called_once_with("/path/to/package.bin")
-            mock_print.assert_called()
 
-    def test_cmd_upload_package_file_not_found(self):
+    def test_cmd_upload_package_file_not_found(self, capsys):
         """Test cmd_upload_package function with file not found."""
         args = argparse.Namespace(file="/path/to/nonexistent.bin")
 
         with (
             patch("dell_unisphere_client.cli.get_client") as mock_get_client,
-            patch("dell_unisphere_client.cli.console.print") as mock_print,
             patch("os.path.exists", return_value=False),
         ):
-
             cmd_upload_package(args)
 
+            captured = capsys.readouterr()
+            assert "File not found" in captured.out
             mock_get_client.assert_not_called()
-            mock_print.assert_called_once()
-            assert "File not found" in mock_print.call_args[0][0]
 
     def test_main(self):
         """Test main function."""

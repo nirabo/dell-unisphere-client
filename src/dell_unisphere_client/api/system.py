@@ -14,17 +14,33 @@ class SystemApi(BaseApiClient):
         This endpoint does not require authentication.
 
         Returns:
-            System information.
+            System information with extracted fields.
         """
-        return self.request("GET", "/api/types/basicSystemInfo/instances")
+        response = self.request("GET", "/api/types/basicSystemInfo/instances")
+        if isinstance(response, list) and len(response) > 0:
+            # Extract first system info entry
+            system_info = response[0]
+            return {
+                "name": system_info.get("name", "Unknown"),
+                "model": system_info.get("model", "Unknown"),
+                "serialNumber": system_info.get("serialNumber", "Unknown"),
+            }
+        return {}
 
     def get_system_info(self) -> Dict[str, Any]:
         """Get system information.
 
         Returns:
-            System information.
+            System information with content field.
         """
-        return self.get_basic_system_info()
+        response = self.get_basic_system_info()
+        return {
+            "content": {
+                "name": response.get("name", "Unknown"),
+                "model": response.get("model", "Unknown"),
+                "serialNumber": response.get("serialNumber", "Unknown"),
+            }
+        }
 
     def get_system(self) -> Dict[str, Any]:
         """Get system information.
