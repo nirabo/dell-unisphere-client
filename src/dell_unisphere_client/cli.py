@@ -363,8 +363,8 @@ def create_parser() -> argparse.ArgumentParser:
     monitor_upgrade_parser.add_argument(
         "--timeout",
         type=int,
-        default=300,
-        help="Maximum time to wait in seconds (default: 300)",
+        default=7200,
+        help="Maximum time to wait in seconds (default: 7200, or 2 hours)",
     )
     monitor_upgrade_parser.add_argument(
         "-j",
@@ -626,6 +626,8 @@ def cmd_verify_upgrade(args: argparse.Namespace) -> None:
     """
     try:
         client = get_client()
+        # Note: The version parameter is kept for backward compatibility
+        # but the verifyUpgradeEligibility endpoint is stateless and doesn't use it
         result = client.verify_upgrade_eligibility(args.version)
 
         if hasattr(args, "json_output") and args.json_output:

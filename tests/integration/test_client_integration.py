@@ -146,7 +146,14 @@ class TestClientIntegration:
         assert candidate_versions == candidate_versions_response
 
         verify_result = client.verify_upgrade_eligibility("5.4.0.0.5.150")
-        assert verify_result == verify_response
+        # Verify the transformed response format
+        expected_verify_result = {
+            "eligible": verify_response.get("content", {}).get("isEligible", False),
+            "messages": verify_response.get("content", {}).get("messages", []),
+            "requiredPatches": [],
+            "requiredHotfixes": [],
+        }
+        assert verify_result == expected_verify_result
 
         create_result = client.create_upgrade_session("5.4.0.0.5.150")
         assert create_result == create_response

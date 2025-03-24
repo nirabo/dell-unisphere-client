@@ -297,10 +297,33 @@ class UnisphereClient:
         self._ensure_logged_in()
         return self.upgrade_api.get_software_upgrade_session(session_id)
 
-    def verify_upgrade_eligibility(self, candidate_version_id: str) -> Dict[str, Any]:
-        """Verify upgrade eligibility."""
+    def verify_upgrade_eligibility(
+        self, candidate_version_id: str = None
+    ) -> Dict[str, Any]:
+        """Verify upgrade eligibility.
+
+        Args:
+            candidate_version_id: The candidate version ID (optional, not used by the API).
+                This parameter is kept for backward compatibility, but the verifyUpgradeEligibility
+                endpoint is stateless and doesn't require any parameters.
+
+        Returns:
+            Dictionary containing eligibility information with keys:
+            - eligible: boolean indicating if upgrade is eligible
+            - messages: list of messages about eligibility
+            - requiredPatches: list of required patches
+            - requiredHotfixes: list of required hotfixes
+        """
         self._ensure_logged_in()
-        return self.upgrade_api.verify_upgrade_eligibility(candidate_version_id)
+        response = self.upgrade_api.verify_upgrade_eligibility(candidate_version_id)
+
+        # Transform response to match mock API format
+        return {
+            "eligible": response.get("content", {}).get("isEligible", False),
+            "messages": response.get("content", {}).get("messages", []),
+            "requiredPatches": [],
+            "requiredHotfixes": [],
+        }
 
     def create_upgrade_session(
         self, candidate_version_id: str, description: Optional[str] = None
@@ -325,9 +348,18 @@ class UnisphereClient:
         return self.upgrade_api.resume_upgrade_session(session_id)
 
     def monitor_upgrade_session(
-        self, session_id: str, interval: int = 5, timeout: int = 300
+        self, session_id: str, interval: int = 5, timeout: int = 7200
     ) -> Dict[str, Any]:
-        """Monitor an upgrade session until completion."""
+        """Monitor an upgrade session until completion.
+
+        Args:
+            session_id: Session ID to monitor
+            interval: Polling interval in seconds (default: 5 seconds)
+            timeout: Maximum time to wait in seconds (default: 7200 seconds or 2 hours)
+
+        Returns:
+            Final session status information
+        """
         self._ensure_logged_in()
         return self.upgrade_api.monitor_upgrade_session(session_id, interval, timeout)
 

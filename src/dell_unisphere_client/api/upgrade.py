@@ -68,11 +68,14 @@ class UpgradeApi(BaseApiClient):
         """
         return self.request("GET", f"/api/instances/upgradeSession/{session_id}")
 
-    def verify_upgrade_eligibility(self, candidate_version_id: str) -> Dict[str, Any]:
+    def verify_upgrade_eligibility(
+        self, candidate_version_id: str = None
+    ) -> Dict[str, Any]:
         """Verify upgrade eligibility.
 
         Args:
-            candidate_version_id: Candidate version ID.
+            candidate_version_id: Candidate version ID (optional, not used by API).
+                This parameter is kept for backward compatibility but is not used in the request.
 
         Returns:
             Verification result.
@@ -88,14 +91,14 @@ class UpgradeApi(BaseApiClient):
                         "EMC-CSRF-TOKEN": self.csrf_token,
                         "Content-Type": "application/json",
                     },
-                    json={"version": candidate_version_id},
+                    json={},  # Empty payload for stateless endpoint
                     verify=self.verify_ssl,
                 )
             return {"content": {"isEligible": True, "messages": []}}
         return self.request(
             "POST",
             "/api/types/upgradeSession/action/verifyUpgradeEligibility",
-            json_data={"candidateVersionId": candidate_version_id},
+            json_data={},  # Empty payload for stateless endpoint
         )
 
     def create_upgrade_session(
@@ -213,14 +216,14 @@ class UpgradeApi(BaseApiClient):
         )
 
     def monitor_upgrade_session(
-        self, session_id: str, interval: int = 5, timeout: int = 300
+        self, session_id: str, interval: int = 5, timeout: int = 7200
     ) -> Dict[str, Any]:
         """Monitor an upgrade session until completion.
 
         Args:
             session_id: Session ID.
             interval: Polling interval in seconds.
-            timeout: Maximum time to wait in seconds.
+            timeout: Maximum time to wait in seconds (default: 7200 seconds or 2 hours).
 
         Returns:
             Final session status.

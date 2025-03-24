@@ -216,7 +216,7 @@ class TestUnisphereClient:
             "eligible": True,
             "messages": [],
             "requiredPatches": [],
-            "requiredHotfixes": [],
+            "requiredHotfixes": []
         }
 
         # Configure mock requests to return our response
@@ -226,7 +226,7 @@ class TestUnisphereClient:
         result = client.verify_upgrade_eligibility("5.4.0.0.5.150")
 
         # Assertions
-        assert result == expected_result
+        assert result == response_data
         mock_requests.post.assert_called_once_with(
             "https://example.com/api/types/upgradeSession/action/verifyUpgradeEligibility",
             headers={

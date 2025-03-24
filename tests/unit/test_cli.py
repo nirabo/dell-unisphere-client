@@ -298,13 +298,17 @@ class TestCLI:
         ):
             mock_client = MagicMock()
             mock_client.verify_upgrade_eligibility.return_value = {
-                "content": {"isEligible": True, "messages": []}
+                "eligible": True,
+                "messages": [],
+                "requiredPatches": [],
+                "requiredHotfixes": [],
             }
             mock_get_client.return_value = mock_client
 
             cmd_verify_upgrade(args)
 
             mock_get_client.assert_called_once()
+            # Note: parameter is passed through CLI but not used by API
             mock_client.verify_upgrade_eligibility.assert_called_once_with(
                 "5.4.0.0.5.150"
             )
