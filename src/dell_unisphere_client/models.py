@@ -1,13 +1,12 @@
 """Dell Unisphere API Models.
 
-This module provides Pydantic models for Dell Unisphere API responses.
+This module provides data models for Dell Unisphere API responses.
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-
-from pydantic import BaseModel, Field
 
 
 class UpgradeStatusEnum(str, Enum):
@@ -43,50 +42,57 @@ class UpgradeTypeEnum(str, Enum):
     LANGUAGE_PACK = "LanguagePack"
 
 
-class Link(BaseModel):
+@dataclass
+class Link:
     """API link model."""
 
     rel: str
     href: str
 
 
-class ApiResponse(BaseModel):
+@dataclass
+class ApiResponse:
     """Base API response model."""
 
-    base: str = Field(alias="@base")
+    base: str  # Formerly @base
     updated: datetime
     links: List[Link]
 
 
-class NameValuePair(BaseModel):
+@dataclass
+class NameValuePair:
     """Name-value pair model."""
 
     name: str
     value: str
 
 
-class FirmwarePackage(BaseModel):
+@dataclass
+class FirmwarePackage:
     """Firmware package model."""
 
     name: str
     version: str
 
 
-class InstalledSoftwareVersionLanguage(BaseModel):
+@dataclass
+class InstalledSoftwareVersionLanguage:
     """Installed software version language model."""
 
     name: str
     version: str
 
 
-class InstalledSoftwareVersionPackage(BaseModel):
+@dataclass
+class InstalledSoftwareVersionPackage:
     """Installed software version package model."""
 
     name: str
     version: str
 
 
-class BasicSystemInfo(BaseModel):
+@dataclass
+class BasicSystemInfo:
     """Basic system info model."""
 
     id: str
@@ -98,19 +104,25 @@ class BasicSystemInfo(BaseModel):
     earliestApiVersion: str
 
 
-class BasicSystemInfoEntry(BaseModel):
+@dataclass
+class BasicSystemInfoEntry:
     """Basic system info entry model."""
 
     content: BasicSystemInfo
 
 
-class BasicSystemInfoResponse(ApiResponse):
+@dataclass
+class BasicSystemInfoResponse:
     """Basic system info response model."""
 
+    base: str
+    updated: datetime
+    links: List[Link]
     entries: List[BasicSystemInfoEntry]
 
 
-class InstalledSoftwareVersion(BaseModel):
+@dataclass
+class InstalledSoftwareVersion:
     """Installed software version model."""
 
     id: str
@@ -118,24 +130,30 @@ class InstalledSoftwareVersion(BaseModel):
     fullVersion: str
     isLatest: bool
     releaseDate: datetime
-    firmwarePackages: List[FirmwarePackage] = []
-    languages: List[InstalledSoftwareVersionLanguage] = []
-    packages: List[InstalledSoftwareVersionPackage] = []
+    firmwarePackages: List[FirmwarePackage] = None
+    languages: List[InstalledSoftwareVersionLanguage] = None
+    packages: List[InstalledSoftwareVersionPackage] = None
 
 
-class InstalledSoftwareVersionEntry(BaseModel):
+@dataclass
+class InstalledSoftwareVersionEntry:
     """Installed software version entry model."""
 
     content: InstalledSoftwareVersion
 
 
-class InstalledSoftwareVersionResponse(ApiResponse):
+@dataclass
+class InstalledSoftwareVersionResponse:
     """Installed software version response model."""
 
+    base: str
+    updated: datetime
+    links: List[Link]
     entries: List[InstalledSoftwareVersionEntry]
 
 
-class CandidateSoftwareVersion(BaseModel):
+@dataclass
+class CandidateSoftwareVersion:
     """Candidate software version model."""
 
     id: str
@@ -148,22 +166,28 @@ class CandidateSoftwareVersion(BaseModel):
     fileName: str
     fileSize: int
     uploadTime: datetime
-    attributes: List[NameValuePair] = []
+    attributes: List[NameValuePair] = None
 
 
-class CandidateSoftwareVersionEntry(BaseModel):
+@dataclass
+class CandidateSoftwareVersionEntry:
     """Candidate software version entry model."""
 
     content: CandidateSoftwareVersion
 
 
-class CandidateSoftwareVersionResponse(ApiResponse):
+@dataclass
+class CandidateSoftwareVersionResponse:
     """Candidate software version response model."""
 
+    base: str
+    updated: datetime
+    links: List[Link]
     entries: List[CandidateSoftwareVersionEntry]
 
 
-class UpgradeMessage(BaseModel):
+@dataclass
+class UpgradeMessage:
     """Upgrade message model."""
 
     id: str
@@ -172,7 +196,8 @@ class UpgradeMessage(BaseModel):
     timestamp: datetime
 
 
-class UpgradeTask(BaseModel):
+@dataclass
+class UpgradeTask:
     """Upgrade task model."""
 
     id: str
@@ -183,7 +208,8 @@ class UpgradeTask(BaseModel):
     estRemainTime: Optional[str] = None
 
 
-class SoftwareUpgradeSession(BaseModel):
+@dataclass
+class SoftwareUpgradeSession:
     """Software upgrade session model."""
 
     id: str
@@ -197,17 +223,22 @@ class SoftwareUpgradeSession(BaseModel):
     startTime: datetime
     endTime: Optional[datetime] = None
     estRemainTime: Optional[str] = None
-    messages: List[UpgradeMessage] = []
-    tasks: List[UpgradeTask] = []
+    messages: List[UpgradeMessage] = None
+    tasks: List[UpgradeTask] = None
 
 
-class SoftwareUpgradeSessionEntry(BaseModel):
+@dataclass
+class SoftwareUpgradeSessionEntry:
     """Software upgrade session entry model."""
 
     content: SoftwareUpgradeSession
 
 
-class SoftwareUpgradeSessionResponse(ApiResponse):
+@dataclass
+class SoftwareUpgradeSessionResponse:
     """Software upgrade session response model."""
 
+    base: str
+    updated: datetime
+    links: List[Link]
     entries: List[SoftwareUpgradeSessionEntry]
