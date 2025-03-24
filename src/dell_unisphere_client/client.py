@@ -7,11 +7,16 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
+import urllib3
+from urllib3.exceptions import InsecureRequestWarning
+
 from dell_unisphere_client.api import SystemApi, SoftwareApi, UpgradeApi
 from dell_unisphere_client.exceptions import AuthenticationError
 from dell_unisphere_client.session import SessionManager
 
 logger = logging.getLogger(__name__)
+
+urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class UnisphereClient:
