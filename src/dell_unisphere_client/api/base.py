@@ -1,6 +1,8 @@
 """Base API client for Dell Unisphere."""
 
+import json
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
@@ -31,7 +33,7 @@ class BaseApiClient:
             csrf_token: CSRF token for authentication.
             verify_ssl: Whether to verify SSL certificates.
             timeout: Request timeout in seconds.
-            verbose: Whether to print detailed request and response information.
+            verbose: Whether to log detailed request and response information.
         """
         self.base_url = base_url
         self.session = session
@@ -133,23 +135,42 @@ class BaseApiClient:
             request_headers,
         )
 
-        # Print request details if verbose mode is enabled
+        # Log request details if verbose mode is enabled
+        request_start_time = datetime.now()
         if self.verbose:
-            print(f"\n{'-'*80}")
-            print(f"REQUEST: {method} {url}")
-            print("HEADERS:")
-            for key, value in request_headers.items():
-                print(f"  {key}: {value}")
+            timestamp = request_start_time.strftime("%H:%M:%S.%f")[
+                :-3
+            ]  # Format: HH:MM:SS.mmm
+            logger.debug(
+                f"====== REQUEST START [{timestamp}] =========================================="
+            )
+            logger.debug(f"• URL:    {method} {url}")
+            logger.debug("• HEADERS:")
+            headers_str = "\n    ".join(
+                [f"{key}: {value}" for key, value in request_headers.items()]
+            )
+            logger.debug(f"    {headers_str}")
+
             if params:
-                print("PARAMS:")
-                for key, value in params.items():
-                    print(f"  {key}: {value}")
+                logger.debug("• PARAMS:")
+                params_str = "\n    ".join(
+                    [f"{key}: {value}" for key, value in params.items()]
+                )
+                logger.debug(f"    {params_str}")
+
             if json_data:
-                print("BODY:")
-                print(f"  {json_data}")
+                logger.debug("• BODY:")
+                if isinstance(json_data, dict):
+                    # Format JSON data with indentation
+                    body_str = json.dumps(json_data, indent=2)
+                    # Add indentation to each line
+                    body_str = "\n    ".join(body_str.split("\n"))
+                    logger.debug(f"    {body_str}")
+                else:
+                    logger.debug(f"    {json_data}")
             elif data:
-                print("BODY:")
-                print(f"  {data}")
+                logger.debug("• BODY:")
+                logger.debug(f"    {data}")
 
         response = self.session.request(
             method=method,
@@ -161,28 +182,76 @@ class BaseApiClient:
             timeout=self.timeout,
         )
 
-        # Print response details if verbose mode is enabled
+        # Log response details if verbose mode is enabled
         if self.verbose:
-            print("\nRESPONSE:")
-            print(f"  Status: {response.status_code} {response.reason}")
-            print("  Headers:")
-            for key, value in response.headers.items():
-                print(f"    {key}: {value}")
+            response_time = datetime.now()
+            duration_ms = int(
+                (response_time - request_start_time).total_seconds() * 1000
+            )
+            timestamp = response_time.strftime("%H:%M:%S.%f")[
+                :-3
+            ]  # Format: HH:MM:SS.mmm
+            logger.debug(
+                f"====== RESPONSE [{timestamp}] ==============================================="
+            )
+            logger.debug(
+                f"• Status:  {response.status_code} {response.reason} ({duration_ms}ms)"
+            )
+
+            logger.debug("• Headers:")
+            headers_str = "\n    ".join(
+                [f"{key}: {value}" for key, value in response.headers.items()]
+            )
+            logger.debug(f"    {headers_str}")
+
             try:
                 if response.content:
-                    print("  Body:")
+                    logger.debug("• Body:")
                     try:
                         # Try to pretty print JSON
                         import json
 
                         body = json.loads(response.text)
-                        print(f"    {json.dumps(body, indent=4)}")
+
+                        # Format JSON with indentation and truncate long values
+                        def format_json(obj, indent=0):
+                            if isinstance(obj, dict):
+                                # Create a copy to modify for display
+                                display_obj = {}
+                                for k, v in obj.items():
+                                    if isinstance(v, str) and len(v) > 50:
+                                        display_obj[k] = v[:47] + "..."
+                                    elif isinstance(v, dict):
+                                        # Handle nested dictionaries
+                                        nested_dict = {}
+                                        for nk, nv in v.items():
+                                            if isinstance(nv, str) and len(nv) > 50:
+                                                nested_dict[nk] = nv[:47] + "..."
+                                            else:
+                                                nested_dict[nk] = nv
+                                        display_obj[k] = nested_dict
+                                    else:
+                                        display_obj[k] = v
+                                return json.dumps(display_obj, indent=2)
+                            return json.dumps(obj)
+
+                        body_str = format_json(body)
+                        # Add indentation to each line
+                        body_str = "\n    ".join(body_str.split("\n"))
+                        logger.debug(f"    {body_str}")
                     except (ValueError, json.JSONDecodeError):
-                        # If not JSON, print as text
-                        print(f"    {response.text}")
+                        # If not JSON, print as text (truncated if too long)
+                        text = response.text
+                        if len(text) > 1000:
+                            text = text[:997] + "..."
+                        logger.debug(f"    {text}")
             except Exception as e:
-                print(f"  Error parsing response body: {e}")
-            print(f"{'-'*80}\n")
+                logger.debug(f"• Error parsing response body: {e}")
+
+            end_timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            logger.debug(
+                f"====== REQUEST END [{end_timestamp}] ============================================"
+            )
 
         return self.handle_response(response)
 

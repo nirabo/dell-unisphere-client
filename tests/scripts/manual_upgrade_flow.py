@@ -269,9 +269,39 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error uploading software package: {str(e)}")
         return False
 
-    # Step 3: Prepare the software
-    logger.info("Step 3: Preparing software")
-    report.add_header("Step 3: Preparing software")
+    # Step 3: Verify upgrade eligibility (stateless)
+    logger.info("Step 3: Verifying upgrade eligibility")
+    report.add_header("Step 3: Verifying upgrade eligibility")
+    try:
+        # Call verify_upgrade_eligibility with no parameters (stateless)
+        eligibility_response = client.verify_upgrade_eligibility()
+        report.add_json(eligibility_response)
+
+        # Check if upgrade is eligible
+        is_eligible = eligibility_response.get("eligible", False)
+        if not is_eligible:
+            messages = eligibility_response.get("messages", [])
+            message_str = (
+                "\n".join(messages) if messages else "No specific messages provided"
+            )
+            logger.error(f"System is not eligible for upgrade: {message_str}")
+            report.add_content(f"⚠️ System is not eligible for upgrade: {message_str}")
+            report.add_content(
+                "Halting upgrade process due to eligibility check failure."
+            )
+            return False
+        else:
+            logger.info("System is eligible for upgrade")
+            report.add_content("✅ System is eligible for upgrade")
+    except Exception as e:
+        logger.error(f"Error verifying upgrade eligibility: {str(e)}")
+        report.add_content(f"Error verifying upgrade eligibility: {str(e)}")
+        report.add_content("Halting upgrade process due to eligibility check failure.")
+        return False
+
+    # Step 4: Prepare the software
+    logger.info("Step 4: Preparing software")
+    report.add_header("Step 4: Preparing software")
     try:
         prepare_response = client.prepare_software(file_id)
         report.add_json(prepare_response)
@@ -282,9 +312,9 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error preparing software: {str(e)}")
         return False
 
-    # Step 4: Get candidate software versions
-    logger.info("Step 4: Getting candidate software versions")
-    report.add_header("Step 4: Getting candidate software versions")
+    # Step 5: Get candidate software versions
+    logger.info("Step 5: Getting candidate software versions")
+    report.add_header("Step 5: Getting candidate software versions")
     try:
         candidate_response = client.get_candidate_software_versions()
         report.add_json(candidate_response)
@@ -309,9 +339,9 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error getting candidate software versions: {str(e)}")
         return False
 
-    # Step 5: Create an upgrade session
-    logger.info("Step 5: Creating upgrade session")
-    report.add_header("Step 5: Creating upgrade session")
+    # Step 6: Create an upgrade session
+    logger.info("Step 6: Creating upgrade session")
+    report.add_header("Step 6: Creating upgrade session")
     try:
         create_session_response = client.create_upgrade_session(candidate_id)
         report.add_json(create_session_response)
@@ -361,9 +391,9 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error creating upgrade session: {str(e)}")
         return False
 
-    # Step 6: Monitor the upgrade progress
-    logger.info("Step 6: Monitoring upgrade progress")
-    report.add_header("Step 6: Monitoring upgrade progress")
+    # Step 7: Monitor the upgrade progress
+    logger.info("Step 7: Monitoring upgrade progress")
+    report.add_header("Step 7: Monitoring upgrade progress")
     report.add_content("Monitoring the upgrade session until completion")
 
     # Create a table for task status tracking

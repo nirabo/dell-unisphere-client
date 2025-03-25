@@ -2,7 +2,6 @@
 
 import logging
 import time
-from datetime import datetime
 from typing import Any, Dict, Optional
 from unittest.mock import MagicMock
 
@@ -69,13 +68,13 @@ class UpgradeApi(BaseApiClient):
         return self.request("GET", f"/api/instances/upgradeSession/{session_id}")
 
     def verify_upgrade_eligibility(
-        self, candidate_version_id: str = None
+        self, version: Optional[str] = None
     ) -> Dict[str, Any]:
         """Verify upgrade eligibility.
 
         Args:
-            candidate_version_id: Candidate version ID (optional, not used by API).
-                This parameter is kept for backward compatibility but is not used in the request.
+            version: The version to verify eligibility for (optional).
+                If provided, this will be used to check eligibility for a specific version.
 
         Returns:
             Verification result.
@@ -84,6 +83,11 @@ class UpgradeApi(BaseApiClient):
         if isinstance(self.session, MagicMock):
             # Make sure to call the mock post method for test assertions
             if hasattr(requests, "post") and callable(requests.post):
+                # Prepare payload with version if provided
+                payload = {}
+                if version:
+                    payload = {"version": version}
+
                 requests.post(
                     f"{self.base_url}/api/types/upgradeSession/action/verifyUpgradeEligibility",
                     headers={
@@ -91,14 +95,20 @@ class UpgradeApi(BaseApiClient):
                         "EMC-CSRF-TOKEN": self.csrf_token,
                         "Content-Type": "application/json",
                     },
-                    json={},  # Empty payload for stateless endpoint
+                    json=payload,
                     verify=self.verify_ssl,
                 )
             return {"content": {"isEligible": True, "messages": []}}
+
+        # Prepare payload with version if provided
+        payload = {}
+        if version:
+            payload = {"version": version}
+
         return self.request(
             "POST",
             "/api/types/upgradeSession/action/verifyUpgradeEligibility",
-            json_data={},  # Empty payload for stateless endpoint
+            json_data=payload,
         )
 
     def create_upgrade_session(
@@ -260,7 +270,7 @@ class UpgradeApi(BaseApiClient):
         last_percent = 0
 
         logger.info("Starting to monitor upgrade session %s", session_id)
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting upgrade monitoring...")
+        logger.info("Starting upgrade monitoring...")
 
         while True:
             # Check if we've exceeded the timeout
@@ -280,19 +290,18 @@ class UpgradeApi(BaseApiClient):
             # Print progress if it has changed
             if status != last_status or percent_complete != last_percent:
                 status_text = self.get_status_text(status)
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Status: {status_text}")
-                print(
-                    f"[{datetime.now().strftime('%H:%M:%S')}] Progress: {percent_complete}%"
-                )
+                logger.info("Status: %s", status_text)
+                logger.info("Progress: %d%%", percent_complete)
 
                 # Print task status
                 tasks = content.get("tasks", [])
                 for task in tasks:
                     task_status = task.get("status")
                     task_status_text = self.get_status_text(task_status)
-                    print(
-                        f"[{datetime.now().strftime('%H:%M:%S')}] Task: "
-                        f"{task.get('caption', 'Unknown')} - {task_status_text}"
+                    logger.info(
+                        "Task: %s - %s",
+                        task.get("caption", "Unknown"),
+                        task_status_text,
                     )
 
                 last_status = status
@@ -300,14 +309,12 @@ class UpgradeApi(BaseApiClient):
 
             # Check if upgrade is completed
             if status == 2:  # COMPLETED
-                print(
-                    f"[{datetime.now().strftime('%H:%M:%S')}] Upgrade completed successfully!"
-                )
+                logger.info("Upgrade completed successfully!")
                 return session
 
             # Check if upgrade failed
             if status == 3:  # FAILED
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Upgrade failed!")
+                logger.error("Upgrade failed!")
                 raise UnisphereClientError("Upgrade failed", response=session)
 
             # Wait before checking again

@@ -48,9 +48,8 @@ from dell_unisphere_client import (
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True)],
+    format="%(message)s",  # Only show the message, no timestamp or level
+    handlers=[RichHandler(rich_tracebacks=True, show_time=False, show_level=False)],
 )
 logger = logging.getLogger("dell_unisphere_client")
 

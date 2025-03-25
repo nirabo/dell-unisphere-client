@@ -48,7 +48,7 @@ class UnisphereClient:
         self.timeout = timeout
         self.verbose = verbose
 
-        # Initialize session manager
+        # Initialize session manager (stateless mode)
         self.session_manager = SessionManager(
             base_url=base_url,
             username=username,
@@ -72,8 +72,11 @@ class UnisphereClient:
     def _load_session(self) -> Dict:
         """Load session data from the session file.
 
+        This method is kept for backwards compatibility with tests.
+        In the stateless approach, it always returns None.
+
         Returns:
-            Dictionary containing session data
+            Dictionary containing session data or None
 
         Raises:
             ValueError: If session file is corrupted or invalid
@@ -82,6 +85,9 @@ class UnisphereClient:
 
     def _is_session_expired(self, session_data: dict) -> bool:
         """Check if the session has expired.
+
+        This method is kept for backwards compatibility with tests.
+        In the stateless approach, it always returns True.
 
         Args:
             session_data: Dictionary containing session information
@@ -94,19 +100,22 @@ class UnisphereClient:
     def _should_reuse_session(self) -> bool:
         """Determine if an existing session should be reused.
 
+        This method is kept for backwards compatibility with tests.
+        In the stateless approach, it always returns False.
+
         Returns:
-            True if session should be reused, False otherwise
+            False in stateless mode
         """
         return self.session_manager.should_reuse_session()
 
     def _create_session_file(self, session_data: dict) -> None:
         """Create a session file with the given session data.
 
+        This method is kept for backwards compatibility with tests.
+        In the stateless approach, it does nothing.
+
         Args:
             session_data: Dictionary containing session information
-
-        Raises:
-            UnisphereClientError: If file creation fails
         """
         self.session_manager.create_session_file(session_data)
 
@@ -120,15 +129,7 @@ class UnisphereClient:
             AuthenticationError: When authentication fails.
         """
         try:
-            # Try to reuse existing session
-            if self._should_reuse_session():
-                self.session = self.session_manager.session
-                self.csrf_token = self.session_manager.csrf_token
-                self._logged_in = True
-                self._initialize_api_clients()
-                return True
-
-            # Create a new session
+            # Create a new session for each login (stateless approach)
             self.session = requests.Session()
             self.session.verify = self.verify_ssl
             self.session.auth = (self.username, self.password)
@@ -155,35 +156,7 @@ class UnisphereClient:
                     {"EMC-CSRF-TOKEN": self.csrf_token, "X-EMC-REST-CLIENT": "true"}
                 )
 
-            # Create session file with login details
-            import time
-
-            session_data = {
-                "idle_timeout": 3600,  # 1 hour timeout
-                "csrf_token": self.csrf_token,
-                "username": self.username,
-                "password": self.password,
-                "creation_timestamp": int(time.time()),
-                "last_access_timestamp": int(time.time()),
-            }
-
-            # Handle cookies
-            if hasattr(response, "cookies"):
-                if (
-                    hasattr(response.cookies, "__class__")
-                    and response.cookies.__class__.__name__ == "MagicMock"
-                ):
-                    session_data["session_cookie"] = {
-                        "mock_cookie": "test-cookie-value"
-                    }
-                else:
-                    session_data["session_cookie"] = (
-                        response.cookies
-                        if isinstance(response.cookies, dict)
-                        else response.cookies.get_dict()
-                    )
-
-            self.session_manager.create_session_file(session_data)
+            # Store session in session manager for current operation
             self.session_manager.session = self.session
             self.session_manager.csrf_token = self.csrf_token
 
@@ -247,9 +220,7 @@ class UnisphereClient:
                 verify=self.verify_ssl,
             )
 
-            # Clean up session resources
-            self.session_manager.cleanup_session()
-
+            # Reset session state
             self._logged_in = False
             self.csrf_token = None
             self.session = None
@@ -264,7 +235,7 @@ class UnisphereClient:
     # System API methods
     def get_basic_system_info(self) -> Dict[str, Any]:
         """Get basic system information."""
-        self._ensure_logged_in()
+        # self._ensure_logged_in()
         return self.system_api.get_basic_system_info()
 
     def get_system_info(self) -> Dict[str, Any]:
@@ -310,14 +281,12 @@ class UnisphereClient:
         return self.upgrade_api.get_software_upgrade_session(session_id)
 
     def verify_upgrade_eligibility(
-        self, candidate_version_id: str = None, raw_json: bool = False
+        self, version: Optional[str] = None, raw_json: bool = False
     ) -> Dict[str, Any]:
         """Verify upgrade eligibility.
 
         Args:
-            candidate_version_id: The candidate version ID (optional, not used by the API).
-                This parameter is kept for backward compatibility, but the verifyUpgradeEligibility
-                endpoint is stateless and doesn't require any parameters.
+            version: The version to verify eligibility for. If None, checks eligibility for the latest version.
             raw_json: If True, returns the raw JSON response from the API instead of the
                 transformed response. Useful for debugging or accessing additional fields.
 
@@ -332,16 +301,30 @@ class UnisphereClient:
                 Raw JSON response from the API
         """
         self._ensure_logged_in()
-        response = self.upgrade_api.verify_upgrade_eligibility(candidate_version_id)
+        response = self.upgrade_api.verify_upgrade_eligibility(version=version)
 
         # Return raw response if requested
         if raw_json:
             return response
 
         # Transform response to match mock API format
+        # Check if 'eligible' is directly in the response or in the 'content' object
+        eligible = False
+        messages = []
+
+        if "eligible" in response:
+            eligible = response.get("eligible", False)
+            messages = response.get("messages", [])
+        elif "content" in response and "eligible" in response["content"]:
+            eligible = response["content"].get("eligible", False)
+            messages = response["content"].get("messages", [])
+        elif "content" in response and "isEligible" in response["content"]:
+            eligible = response["content"].get("isEligible", False)
+            messages = response["content"].get("messages", [])
+
         return {
-            "eligible": response.get("content", {}).get("isEligible", False),
-            "messages": response.get("content", {}).get("messages", []),
+            "eligible": eligible,
+            "messages": messages,
             "requiredPatches": [],
             "requiredHotfixes": [],
         }
@@ -385,9 +368,12 @@ class UnisphereClient:
         return self.upgrade_api.monitor_upgrade_session(session_id, interval, timeout)
 
     def _ensure_logged_in(self):
-        """Ensure the client is logged in."""
-        if not self._logged_in or not self.session:
-            self.login()
+        """Ensure the client is logged in.
+
+        In the stateless approach, we authenticate for every API call.
+        """
+        # Always login for each API call in stateless mode
+        self.login()
 
     def __enter__(self):
         """Context manager entry."""

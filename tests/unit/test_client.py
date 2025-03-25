@@ -234,7 +234,7 @@ class TestUnisphereClient:
                 "EMC-CSRF-TOKEN": "test-token",
                 "Content-Type": "application/json",
             },
-            json={},  # Empty payload for stateless endpoint
+            json={"version": "5.4.0.0.5.150"},  # Include version in payload
             verify=True,
         )
 
@@ -253,7 +253,7 @@ class TestUnisphereClient:
                 "EMC-CSRF-TOKEN": "test-token",
                 "Content-Type": "application/json",
             },
-            json={},  # Empty payload for stateless endpoint
+            json={"version": "5.4.0.0.5.150"},  # Include version in payload
             verify=True,
         )
 
