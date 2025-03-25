@@ -375,6 +375,18 @@ class UnisphereClient:
         # Always login for each API call in stateless mode
         self.login()
 
+    def get_status_text(self, status: int) -> str:
+        """Convert status code to text.
+
+        Args:
+            status: Status code.
+
+        Returns:
+            Status text.
+        """
+        # Delegate to the upgrade API's get_status_text method
+        return self.upgrade_api.get_status_text(status)
+
     def __enter__(self):
         """Context manager entry."""
         self.login()

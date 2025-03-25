@@ -881,7 +881,7 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
                         for task in tasks:
                             task_name = task.get("caption", "Unknown")
                             task_status = task.get("status", 0)
-                            status_text = client._get_status_text(task_status)
+                            status_text = client.get_status_text(task_status)
                             table.add_row(task_name, status_text)
 
                         console.print(table)
