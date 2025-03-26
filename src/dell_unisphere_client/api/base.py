@@ -254,7 +254,22 @@ class BaseApiClient:
                 f"====== REQUEST END [{end_timestamp}] ============================================"
             )
 
-        return self.handle_response(response)
+        # Always print raw response in verbose mode, even if an exception occurs
+        try:
+            return self.handle_response(response)
+        except Exception as e:
+            if self.verbose:
+                logger.error(
+                    "\n====== ERROR HANDLING RESPONSE ======================================"
+                )
+                logger.error(f"• Exception: {type(e).__name__}: {str(e)}")
+                logger.error(f"• Status Code: {response.status_code}")
+                logger.error(f"• Raw Response Text: {response.text}")
+                logger.error(
+                    "====== END ERROR DETAILS ==========================================\n"
+                )
+            # Re-raise the exception
+            raise
 
     def get_status_text(self, status: int) -> str:
         """Convert status code to text.

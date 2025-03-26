@@ -16,8 +16,11 @@ logger = logging.getLogger(__name__)
 class UpgradeApi(BaseApiClient):
     """API client for upgrade-related endpoints."""
 
-    def get_software_upgrade_sessions(self) -> Dict[str, Any]:
+    def get_software_upgrade_sessions(self, fields: str = None) -> Dict[str, Any]:
         """Get software upgrade sessions.
+
+        Args:
+            fields: Optional comma-separated list of fields to include in the response.
 
         Returns:
             Software upgrade sessions.
@@ -26,13 +29,20 @@ class UpgradeApi(BaseApiClient):
         if isinstance(self.session, MagicMock):
             # Make sure to call the mock get method for test assertions
             if hasattr(requests, "get") and callable(requests.get):
+                # Prepare params with fields if provided
+                params = {}
+                if fields:
+                    params["fields"] = fields
+
                 response = requests.get(
                     f"{self.base_url}/api/types/upgradeSession/instances",
+                    params=params,
                     headers={
-                        "X-EMC-REST-CLIENT": "true",
                         "EMC-CSRF-TOKEN": "test-token",
                     },
+                    cookies={},
                     verify=self.verify_ssl,
+                    timeout=60,
                 )
                 # If we're in a unit test, the mock response will have a return value set
                 if hasattr(response, "json") and callable(response.json):
@@ -54,7 +64,12 @@ class UpgradeApi(BaseApiClient):
                     }
                 ]
             }
-        return self.request("GET", "/api/types/upgradeSession/instances")
+        # Add fields parameter if provided
+        params = {}
+        if fields:
+            params["fields"] = fields
+
+        return self.request("GET", "/api/types/upgradeSession/instances", params=params)
 
     def get_software_upgrade_session(self, session_id: str) -> Dict[str, Any]:
         """Get a specific software upgrade session.
@@ -171,6 +186,9 @@ class UpgradeApi(BaseApiClient):
         if isinstance(self.session, MagicMock):
             # Make sure to call the mock post method for test assertions
             if hasattr(requests, "post") and callable(requests.post):
+                # Use the correct schema for the request body
+                request_body = {"candidate": {"id": candidate_version_id}}
+
                 response_obj = requests.post(
                     f"{self.base_url}/api/types/upgradeSession/instances",
                     headers={
@@ -178,7 +196,7 @@ class UpgradeApi(BaseApiClient):
                         "EMC-CSRF-TOKEN": self.csrf_token,
                         "Content-Type": "application/json",
                     },
-                    json={"candidateVersion": candidate_version_id},
+                    json=request_body,
                     verify=self.verify_ssl,
                 )
                 # If we're in a unit test, the mock response will have a return value set
@@ -199,8 +217,9 @@ class UpgradeApi(BaseApiClient):
         if self.csrf_token:
             headers["EMC-CSRF-TOKEN"] = self.csrf_token
 
-        # Prepare request data
-        data = {"candidateVersion": candidate_version_id}
+        # Prepare request data with the correct schema
+        data = {"candidate": {"id": candidate_version_id}}
+
         if description:
             data["description"] = description
 
