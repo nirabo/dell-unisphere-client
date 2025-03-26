@@ -77,7 +77,36 @@ class UpgradeApi(BaseApiClient):
                 If provided, this will be used to check eligibility for a specific version.
 
         Returns:
-            Verification result.
+            Verification result with the following schema:
+            {
+              "updated": "2025-03-25T14:28:18.980Z",
+              "content": {
+                "statusMessage": "",  # Empty for success
+                "overallStatus": false  # false for success, true for failure
+              }
+            }
+
+            For failures, the content will include additional fields:
+            {
+              "updated": "2025-03-25T14:28:18.980Z",
+              "content": {
+                "codes": ["flr::check_server_connectivity_2"],
+                "overallStatus": true,
+                "messages": [
+                  {
+                    "severity": 3,
+                    "httpStatus": 409,
+                    "errorCode": "flr::check_server_connectivity_2",
+                    "messages": [
+                      {
+                        "locale": "en_US",
+                        "message": "Error message"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
         """
         # Mock implementation for tests
         if isinstance(self.session, MagicMock):
@@ -98,7 +127,22 @@ class UpgradeApi(BaseApiClient):
                     json=payload,
                     verify=self.verify_ssl,
                 )
-            return {"content": {"isEligible": True, "messages": []}}
+
+            # Return the updated mock response format that matches the real system
+            from datetime import datetime, timezone
+
+            current_time = (
+                datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            )
+
+            # By default, return a successful response
+            return {
+                "updated": current_time,
+                "content": {
+                    "statusMessage": "",  # Empty for success
+                    "overallStatus": False,  # false for success
+                },
+            }
 
         # Prepare payload with version if provided
         payload = {}

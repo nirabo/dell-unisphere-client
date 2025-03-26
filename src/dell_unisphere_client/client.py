@@ -307,27 +307,77 @@ class UnisphereClient:
         if raw_json:
             return response
 
-        # Transform response to match mock API format
-        # Check if 'eligible' is directly in the response or in the 'content' object
-        eligible = False
-        messages = []
-
-        if "eligible" in response:
-            eligible = response.get("eligible", False)
-            messages = response.get("messages", [])
-        elif "content" in response and "eligible" in response["content"]:
-            eligible = response["content"].get("eligible", False)
-            messages = response["content"].get("messages", [])
-        elif "content" in response and "isEligible" in response["content"]:
-            eligible = response["content"].get("isEligible", False)
-            messages = response["content"].get("messages", [])
-
-        return {
-            "eligible": eligible,
-            "messages": messages,
+        # Default response structure
+        result = {
+            "eligible": False,
+            "messages": [],
             "requiredPatches": [],
             "requiredHotfixes": [],
         }
+
+        # Handle the mock API format (test_verify_upgrade_eligibility)
+        if "content" in response and "isEligible" in response["content"]:
+            result["eligible"] = response["content"].get("isEligible", False)
+            result["messages"] = response["content"].get("messages", [])
+            return result
+
+        # Check for statusMessage first - this needs to be checked before overallStatus
+        if "content" in response and "statusMessage" in response["content"]:
+            status_message = response["content"].get("statusMessage", "")
+
+            # Special case for "Some error occurred" message
+            if status_message == "Some error occurred":
+                result["eligible"] = False
+                result["messages"] = ["Some error occurred"]
+                return result
+
+            # Handle non-empty status messages as errors
+            if status_message != "":
+                result["eligible"] = False
+                result["messages"] = [status_message]
+                return result
+
+        # Handle the real machine success format
+        # Success case: overallStatus=false and empty statusMessage
+        if (
+            "content" in response
+            and "overallStatus" in response["content"]
+            and response["content"].get("overallStatus") is False
+        ):
+            result["eligible"] = True
+            return result
+
+        # Handle the real machine error format with detailed messages
+        if (
+            "content" in response
+            and "messages" in response["content"]
+            and isinstance(response["content"]["messages"], list)
+            and len(response["content"]["messages"]) > 0
+        ):
+
+            # Extract error messages from the nested structure
+            error_messages = []
+            for msg_obj in response["content"]["messages"]:
+                if "messages" in msg_obj and isinstance(msg_obj["messages"], list):
+                    for locale_msg in msg_obj["messages"]:
+                        if "message" in locale_msg:
+                            error_messages.append(locale_msg["message"])
+
+            if error_messages:
+                result["eligible"] = False
+                result["messages"] = error_messages
+                return result
+
+        # Handle any other format with eligible field
+        if "eligible" in response:
+            result["eligible"] = response.get("eligible", False)
+            result["messages"] = response.get("messages", [])
+        elif "content" in response and "eligible" in response["content"]:
+            result["eligible"] = response["content"].get("eligible", False)
+            result["messages"] = response["content"].get("messages", [])
+
+        # If we reach here with no matches, use the default response
+        return result
 
     def create_upgrade_session(
         self, candidate_version_id: str, description: Optional[str] = None

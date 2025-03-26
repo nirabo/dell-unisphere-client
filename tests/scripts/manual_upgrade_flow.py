@@ -274,7 +274,14 @@ def test_upgrade_flow(client, report):
     report.add_header("Step 3: Verifying upgrade eligibility")
     try:
         # Call verify_upgrade_eligibility with no parameters (stateless)
+        # First get the raw response to show in the report
+        raw_response = client.verify_upgrade_eligibility(raw_json=True)
+        report.add_content("Raw eligibility response:")
+        report.add_json(raw_response)
+
+        # Then get the processed response for our logic
         eligibility_response = client.verify_upgrade_eligibility()
+        report.add_content("Processed eligibility response:")
         report.add_json(eligibility_response)
 
         # Check if upgrade is eligible

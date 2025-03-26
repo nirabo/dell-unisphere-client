@@ -257,6 +257,72 @@ class TestUnisphereClient:
             verify=True,
         )
 
+    def test_verify_upgrade_eligibility_real_machine_format(
+        self, mock_requests, mock_response
+    ):
+        """Test verify_upgrade_eligibility method with real machine response format."""
+        # Setup
+        client = UnisphereClient(
+            base_url="https://example.com", username="testuser", password="testpass"
+        )
+        client.csrf_token = "test-token"
+        client.session = MagicMock()
+
+        # Create mock response - real machine API response format
+        response_data = {
+            "updated": "2025-03-25T14:28:18.980Z",
+            "content": {"statusMessage": "", "overallStatus": False},
+        }
+        response = mock_response(json_data=response_data, status_code=200)
+
+        # Expected transformed response after client processing
+        # Empty statusMessage indicates success (eligible=True)
+        expected_result = {
+            "eligible": True,
+            "messages": [],
+            "requiredPatches": [],
+            "requiredHotfixes": [],
+        }
+
+        # Configure mock requests to return our response
+        mock_requests.post.return_value = response
+
+        # Test with real machine response format
+        result = client.verify_upgrade_eligibility("5.4.0.0.5.150")
+
+        # Assertions
+        assert result == expected_result
+        mock_requests.post.assert_called_once_with(
+            "https://example.com/api/types/upgradeSession/action/verifyUpgradeEligibility",
+            headers={
+                "X-EMC-REST-CLIENT": "true",
+                "EMC-CSRF-TOKEN": "test-token",
+                "Content-Type": "application/json",
+            },
+            json={"version": "5.4.0.0.5.150"},
+            verify=True,
+        )
+
+        # Test with error message
+        mock_requests.reset_mock()
+        error_response_data = {
+            "updated": "2025-03-25T14:28:18.980Z",
+            "content": {"statusMessage": "Some error occurred", "overallStatus": False},
+        }
+        error_response = mock_response(json_data=error_response_data, status_code=200)
+        mock_requests.post.return_value = error_response
+
+        # Expected result with error
+        expected_error_result = {
+            "eligible": False,
+            "messages": ["Some error occurred"],
+            "requiredPatches": [],
+            "requiredHotfixes": [],
+        }
+
+        error_result = client.verify_upgrade_eligibility("5.4.0.0.5.150")
+        assert error_result == expected_error_result
+
     def test_create_upgrade_session(self, mock_requests, mock_response):
         """Test create_upgrade_session method."""
         # Setup
