@@ -686,12 +686,26 @@ def cmd_verify_upgrade(args: argparse.Namespace) -> None:
         if hasattr(args, "json_output") and args.json_output:
             print_json(result)
         else:
-            console.print("Upgrade eligibility verified successfully.")
+            is_eligible = result.get(
+                "eligible", result.get("content", {}).get("isEligible", False)
+            )
+
+            if is_eligible:
+                console.print("[green]System is eligible for upgrade.[/green]")
+            else:
+                console.print("[yellow]System is not eligible for upgrade.[/yellow]")
+
+                # Display messages if available
+                messages = result.get("messages", [])
+                if messages:
+                    console.print("\nReasons:")
+                    for msg in messages:
+                        console.print(f"- {msg}")
+
             if raw_json:
                 console.print("[yellow]Note: Showing raw API response[/yellow]")
-            console.print(
-                f"Eligible: {result.get('eligible', result.get('content', {}).get('isEligible', False))}"
-            )
+
+            console.print(f"Eligible: {is_eligible}")
     except UnisphereClientError as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         sys.exit(1)

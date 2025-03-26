@@ -142,7 +142,7 @@ class BaseApiClient:
                 :-3
             ]  # Format: HH:MM:SS.mmm
             logger.debug(
-                f"====== REQUEST START [{timestamp}] =========================================="
+                f"====== REQUEST START [{timestamp}] ==========================================="
             )
             logger.debug(f"• URL:    {method} {url}")
             logger.debug("• HEADERS:")
@@ -172,13 +172,16 @@ class BaseApiClient:
                 logger.debug("• BODY:")
                 logger.debug(f"    {data}")
 
+        # Create a local variable with a different name to avoid namespace conflict with json module
+        json_payload = json_data
         response = self.session.request(
             method=method,
             url=url,
             params=params,
             data=data,
-            json=json_data,
+            json=json_payload,  # Using renamed variable to avoid conflict with json module
             headers=request_headers,
+            verify=self.verify_ssl,
             timeout=self.timeout,
         )
 
@@ -209,8 +212,6 @@ class BaseApiClient:
                     logger.debug("• Body:")
                     try:
                         # Try to pretty print JSON
-                        import json
-
                         body = json.loads(response.text)
 
                         # Format JSON with indentation and truncate long values

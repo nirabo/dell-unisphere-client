@@ -321,18 +321,20 @@ class UnisphereClient:
             result["messages"] = response["content"].get("messages", [])
             return result
 
-        # Check for statusMessage first - this needs to be checked before overallStatus
+        # Special case for "Some error occurred" message - check this first
+        if (
+            "content" in response
+            and "statusMessage" in response["content"]
+            and response["content"].get("statusMessage") == "Some error occurred"
+        ):
+            result["eligible"] = False
+            result["messages"] = ["Some error occurred"]
+            return result
+
+        # Check for other status messages
         if "content" in response and "statusMessage" in response["content"]:
             status_message = response["content"].get("statusMessage", "")
-
-            # Special case for "Some error occurred" message
-            if status_message == "Some error occurred":
-                result["eligible"] = False
-                result["messages"] = ["Some error occurred"]
-                return result
-
-            # Handle non-empty status messages as errors
-            if status_message != "":
+            if status_message and status_message.strip():
                 result["eligible"] = False
                 result["messages"] = [status_message]
                 return result
