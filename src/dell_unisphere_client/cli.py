@@ -983,7 +983,11 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
         )
         console.print("Press Ctrl+C to stop monitoring")
 
-        # Create a progress display
+        # Import Rich components for live display
+        from rich.live import Live
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.layout import Layout
         from rich.progress import (
             Progress,
             TextColumn,
@@ -991,53 +995,123 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
             TimeElapsedColumn,
             SpinnerColumn,
         )
+        import time
 
-        with Progress(
+        # Create a layout for organizing the display
+        layout = Layout()
+        layout.split(
+            Layout(name="header", size=3),
+            Layout(name="body"),
+        )
+        layout["body"].split_row(
+            Layout(name="progress", ratio=1),
+            Layout(name="tasks", ratio=2),
+        )
+
+        # Create progress bar
+        progress = Progress(
             SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
+            TextColumn("[bold blue]Upgrade Progress"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeElapsedColumn(),
-            console=console,
-            transient=False,
-        ) as progress:
-            # Create the main progress task
-            task_id = progress.add_task("Upgrade Session", total=100)
+        )
+        task_id = progress.add_task("Upgrade", total=100)
 
+        # Create a function to update the display
+        def generate_display(
+            status=None, percent=0, tasks=None, elapsed_time="00:00:00"
+        ):
+            # Update header
+            header_content = f"[bold]Status:[/bold] {status or 'Initializing'}\n"
+            header_content += f"[bold]Progress:[/bold] {percent}% | [bold]Elapsed:[/bold] {elapsed_time}"
+            layout["header"].update(Panel(header_content, title="Upgrade Status"))
+
+            # Update progress
+            progress.update(task_id, completed=percent)
+            layout["progress"].update(Panel(progress))
+
+            # Update tasks table
+            task_table = Table(show_header=True, header_style="bold")
+            task_table.add_column("Task")
+            task_table.add_column("Status")
+
+            if tasks:
+                for task in tasks:
+                    task_name = task.get("caption", "Unknown")
+                    task_status = task.get("status", 0)
+                    status_text = client.get_status_text(task_status)
+
+                    # Style based on status
+                    if status_text == "COMPLETED":
+                        status_style = "[green]COMPLETED[/green]"
+                    elif status_text == "IN_PROGRESS":
+                        status_style = "[yellow]IN_PROGRESS[/yellow]"
+                    elif status_text == "PENDING":
+                        status_style = "[grey]PENDING[/grey]"
+                    else:
+                        status_style = status_text
+
+                    task_table.add_row(task_name, status_style)
+            else:
+                task_table.add_row("No tasks found", "")
+
+            layout["tasks"].update(Panel(task_table, title="Tasks"))
+            return layout
+
+        # Initial empty display
+        with Live(generate_display(), refresh_per_second=4) as live:
             try:
-                # Start monitoring (stateless operation)
-                result = client.monitor_upgrade_session(
-                    interval=args.interval, timeout=args.timeout
-                )
+                # Start time for tracking
+                start_time = time.time()
+                elapsed_seconds = 0
 
-                # Update progress to 100% when complete
-                progress.update(task_id, completed=100)
+                while elapsed_seconds < args.timeout:
+                    # Get all upgrade sessions
+                    response = client.upgrade_api.get_software_upgrade_sessions(
+                        fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
+                    )
 
-                # Display final result
-                if hasattr(args, "json_output") and args.json_output:
-                    print_json(result)
-                else:
-                    console.print("[green]Upgrade completed successfully![/green]")
+                    # Find the active session (there should only be one)
+                    session = {"content": {}}
+                    if "entries" in response and response["entries"]:
+                        session = {"content": response["entries"][0]["content"]}
 
-                    # Extract and display task completion summary
-                    content = result.get("content", {})
+                    # Extract status information
+                    content = session.get("content", {})
+                    status_code = content.get("status")
+                    status_text = client.get_status_text(status_code)
+                    percent_complete = content.get("percentComplete", 0)
+                    elapsed_time = content.get("elapsedTime", "PT0H0M0S")
                     tasks = content.get("tasks", [])
 
-                    if tasks:
-                        # Create a table for task summary
-                        table = Table(title="Task Completion Summary")
-                        table.add_column("Task")
-                        table.add_column("Status")
+                    # Update the live display
+                    live.update(
+                        generate_display(
+                            status_text, percent_complete, tasks, elapsed_time
+                        )
+                    )
 
-                        for task in tasks:
-                            task_name = task.get("caption", "Unknown")
-                            task_status = task.get("status", 0)
-                            status_text = client.get_status_text(task_status)
-                            table.add_row(task_name, status_text)
+                    # Check if upgrade is complete
+                    if status_text == "COMPLETED":
+                        break
 
-                        console.print(table)
+                    # Wait for the next interval
+                    time.sleep(args.interval)
+                    elapsed_seconds = time.time() - start_time
+
+                # Final update
+                if status_text == "COMPLETED":
+                    console.print("\n[green]Upgrade completed successfully![/green]")
+                else:
+                    console.print("\n[yellow]Monitoring timeout reached[/yellow]")
+
+                # If JSON output is requested
+                if hasattr(args, "json_output") and args.json_output:
+                    print_json(session)
+
             except KeyboardInterrupt:
-                console.print("[yellow]Monitoring stopped by user[/yellow]")
+                console.print("\n[yellow]Monitoring stopped by user[/yellow]")
                 return
 
     except UnisphereClientError as e:
