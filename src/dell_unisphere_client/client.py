@@ -490,12 +490,11 @@ class UnisphereClient:
             return {"sessions": [], "count": 0}
 
     def monitor_upgrade_session(
-        self, session_id: str, interval: int = 5, timeout: int = 7200
+        self, interval: int = 5, timeout: int = 7200
     ) -> Dict[str, Any]:
-        """Monitor an upgrade session until completion.
+        """Monitor the upgrade session until completion (stateless operation).
 
         Args:
-            session_id: Session ID to monitor
             interval: Polling interval in seconds (default: 5 seconds)
             timeout: Maximum time to wait in seconds (default: 7200 seconds or 2 hours)
 
@@ -503,7 +502,7 @@ class UnisphereClient:
             Final session status information
         """
         self._ensure_logged_in()
-        return self.upgrade_api.monitor_upgrade_session(session_id, interval, timeout)
+        return self.upgrade_api.monitor_upgrade_session(interval, timeout)
 
     def _ensure_logged_in(self):
         """Ensure the client is logged in.

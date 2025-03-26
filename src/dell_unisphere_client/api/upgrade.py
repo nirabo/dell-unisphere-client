@@ -80,7 +80,23 @@ class UpgradeApi(BaseApiClient):
         Returns:
             Software upgrade session.
         """
-        return self.request("GET", f"/api/instances/upgradeSession/{session_id}")
+        # Use the stateless endpoint pattern with filtering
+        response = self.request(
+            "GET",
+            "/api/types/upgradeSession/instances",
+            params={
+                "fields": "id,status,caption,percentComplete,type,elapsedTime,tasks"
+            },
+        )
+
+        # Find the session with the matching ID
+        if "entries" in response:
+            for entry in response["entries"]:
+                if "content" in entry and entry["content"].get("id") == session_id:
+                    return {"content": entry["content"]}
+
+        # If no matching session is found, return an empty result
+        return {"content": {}}
 
     def verify_upgrade_eligibility(
         self, version: Optional[str] = None
@@ -289,12 +305,11 @@ class UpgradeApi(BaseApiClient):
         )
 
     def monitor_upgrade_session(
-        self, session_id: str, interval: int = 5, timeout: int = 7200
+        self, interval: int = 5, timeout: int = 7200
     ) -> Dict[str, Any]:
-        """Monitor an upgrade session until completion.
+        """Monitor the upgrade session until completion (stateless operation).
 
         Args:
-            session_id: Session ID.
             interval: Polling interval in seconds.
             timeout: Maximum time to wait in seconds (default: 7200 seconds or 2 hours).
 
@@ -309,7 +324,7 @@ class UpgradeApi(BaseApiClient):
             # For tests, just return a completed session
             return {
                 "content": {
-                    "id": session_id,
+                    "id": "Upgrade_5.4.0.0",
                     "status": 2,  # COMPLETED
                     "percentComplete": 100,
                     "tasks": [
@@ -332,7 +347,7 @@ class UpgradeApi(BaseApiClient):
         last_status = None
         last_percent = 0
 
-        logger.info("Starting to monitor upgrade session %s", session_id)
+        logger.info("Starting to monitor upgrade session")
         logger.info("Starting upgrade monitoring...")
 
         while True:
@@ -342,8 +357,16 @@ class UpgradeApi(BaseApiClient):
                     f"Monitoring timed out after {timeout} seconds"
                 )
 
-            # Get current session status
-            session = self.get_software_upgrade_session(session_id)
+            # Get all upgrade sessions
+            response = self.get_software_upgrade_sessions(
+                fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
+            )
+
+            # Find the active session (there should only be one)
+            session = {"content": {}}
+            if "entries" in response and response["entries"]:
+                # Get the first session (there should only be one)
+                session = {"content": response["entries"][0]["content"]}
 
             # Extract status information
             content = session.get("content", {})

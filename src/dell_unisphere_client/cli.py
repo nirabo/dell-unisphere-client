@@ -386,12 +386,37 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output in JSON format",
     )
 
-    # Monitor upgrade command
+    # Monitor upgrade command (stateless operation)
     monitor_upgrade_parser = subparsers.add_parser(
-        "monitor-upgrade", help="Monitor an upgrade session until completion"
+        "monitor-upgrade", help="Monitor the upgrade session (stateless operation)"
     )
     add_common_arguments(monitor_upgrade_parser)
-    monitor_upgrade_parser.add_argument("--id", required=True, help="Session ID")
+
+    # Monitor all upgrades command (stateless, no session ID required)
+    monitor_upgrades_parser = subparsers.add_parser(
+        "monitor-upgrades",
+        help="Monitor all upgrade sessions (stateless, no session ID required)",
+    )
+    add_common_arguments(monitor_upgrades_parser)
+    monitor_upgrades_parser.add_argument(
+        "--interval",
+        type=int,
+        default=5,
+        help="Polling interval in seconds (default: 5)",
+    )
+    monitor_upgrades_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=7200,
+        help="Maximum time to wait in seconds (default: 7200 or 2 hours)",
+    )
+    monitor_upgrades_parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output in JSON format",
+    )
     monitor_upgrade_parser.add_argument(
         "--interval",
         type=int,
@@ -828,8 +853,8 @@ def cmd_prepare_software(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
-def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
-    """Monitor an upgrade session until completion.
+def cmd_monitor_upgrades(args: argparse.Namespace) -> None:
+    """Monitor all upgrade sessions (stateless, no session ID required).
 
     Args:
         args: Command line arguments.
@@ -840,7 +865,7 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
         client.login()
 
         # Display initial message
-        console.print(f"Monitoring upgrade session {args.id}...")
+        console.print("Monitoring all upgrade sessions...")
         console.print(
             f"Polling every {args.interval} seconds (timeout: {args.timeout} seconds)"
         )
@@ -865,12 +890,124 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
             transient=False,
         ) as progress:
             # Create the main progress task
-            task_id = progress.add_task(f"Upgrade Session: {args.id}", total=100)
+            task_id = progress.add_task("Monitoring Upgrade Sessions", total=100)
+
+            # Track time for timeout
+            import time
+
+            start_time = time.time()
+            elapsed = 0
 
             try:
-                # Start monitoring
+                while elapsed < args.timeout:
+                    # Get all upgrade sessions
+                    result = client.monitor_upgrade_sessions(
+                        raw_json=(
+                            args.json_output if hasattr(args, "json_output") else False
+                        )
+                    )
+
+                    # If raw JSON output is requested, just print and exit
+                    if hasattr(args, "json_output") and args.json_output:
+                        print_json(result)
+                        return
+
+                    # Process and display sessions
+                    sessions = result.get("sessions", [])
+
+                    if not sessions:
+                        console.print(
+                            "[yellow]No active upgrade sessions found[/yellow]"
+                        )
+                    else:
+                        # Create a table for session summary
+                        table = Table(title="Active Upgrade Sessions")
+                        table.add_column("ID")
+                        table.add_column("Status")
+                        table.add_column("Progress")
+                        table.add_column("Elapsed Time")
+
+                        for session in sessions:
+                            session_id = session.get("id", "Unknown")
+                            status = session.get("status", "Unknown")
+                            progress_pct = session.get("percentComplete", 0)
+                            elapsed_time = session.get("elapsedTime", "00:00:00")
+
+                            table.add_row(
+                                str(session_id),
+                                str(status),
+                                f"{progress_pct}%",
+                                str(elapsed_time),
+                            )
+
+                        console.print(table)
+
+                        # Update progress based on session progress
+                        if sessions and len(sessions) > 0:
+                            avg_progress = sum(
+                                session.get("percentComplete", 0)
+                                for session in sessions
+                            ) / len(sessions)
+                            progress.update(task_id, completed=avg_progress)
+
+                    # Wait for the next interval
+                    time.sleep(args.interval)
+                    elapsed = time.time() - start_time
+
+                console.print("[yellow]Monitoring timeout reached[/yellow]")
+
+            except KeyboardInterrupt:
+                console.print("[yellow]Monitoring stopped by user[/yellow]")
+                return
+
+    except UnisphereClientError as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
+
+
+def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
+    """Monitor the upgrade session (stateless operation).
+
+    Args:
+        args: Command line arguments.
+    """
+    try:
+        verbose = getattr(args, "verbose", False)
+        client = get_client(verbose=verbose)
+        client.login()
+
+        # Display initial message
+        console.print("Monitoring upgrade session...")
+        console.print(
+            f"Polling every {args.interval} seconds (timeout: {args.timeout} seconds)"
+        )
+        console.print("Press Ctrl+C to stop monitoring")
+
+        # Create a progress display
+        from rich.progress import (
+            Progress,
+            TextColumn,
+            BarColumn,
+            TimeElapsedColumn,
+            SpinnerColumn,
+        )
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+            console=console,
+            transient=False,
+        ) as progress:
+            # Create the main progress task
+            task_id = progress.add_task("Upgrade Session", total=100)
+
+            try:
+                # Start monitoring (stateless operation)
                 result = client.monitor_upgrade_session(
-                    session_id=args.id, interval=args.interval, timeout=args.timeout
+                    interval=args.interval, timeout=args.timeout
                 )
 
                 # Update progress to 100% when complete
@@ -987,6 +1124,8 @@ def main() -> None:
         cmd_prepare_software(args)
     elif args.command == "monitor-upgrade":
         cmd_monitor_upgrade(args)
+    elif args.command == "monitor-upgrades":
+        cmd_monitor_upgrades(args)
     else:
         parser.print_help()
 
