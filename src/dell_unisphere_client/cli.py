@@ -31,12 +31,14 @@ import json
 import logging
 import os
 import sys
+import requests
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
+from rich.text import Text
 
 from dell_unisphere_client import __version__
 from dell_unisphere_client import (
@@ -68,31 +70,30 @@ DEFAULT_CONFIG = {
 
 
 def load_config() -> Dict[str, Any]:
-    """Load configuration from file.
-
-    Returns:
-        Configuration dictionary.
-    """
+    """Load configuration from file."""
     try:
         with open(DEFAULT_CONFIG_FILE, "r") as f:
             return json.load(f)
+    except FileNotFoundError:
+        logger.warning("Config file not found, using defaults.")
+        return DEFAULT_CONFIG
+    except json.JSONDecodeError:
+        logger.error("Invalid config file format, using defaults.")
+        return DEFAULT_CONFIG
     except Exception as e:
         logger.warning(f"Failed to load config: {e}")
         return DEFAULT_CONFIG
 
 
 def save_config(config: Dict[str, Any]) -> None:
-    """Save configuration to file.
-
-    Args:
-        config: Configuration dictionary.
-    """
+    """Save configuration to file."""
     DEFAULT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     try:
         with open(DEFAULT_CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=2)
     except Exception as e:
         logger.error(f"Failed to save config: {e}")
+        raise
 
 
 def get_client(
@@ -136,12 +137,8 @@ def get_client(
 
 
 def print_json(data: Any) -> None:
-    """Print data as formatted JSON.
-
-    Args:
-        data: Data to print.
-    """
-    console.print_json(json.dumps(data))
+    """Print data as formatted JSON."""
+    console.print_json(data)
 
 
 def print_table(data: List[Dict[str, Any]], title: str) -> None:
@@ -440,6 +437,26 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def handle_errors(func):
+    """Decorator to handle common errors."""
+
+    def wrapper(args):
+        try:
+            func(args)
+        except AuthenticationError as e:
+            console.print(f"[red]Authentication failed: {e}[/red]")
+            sys.exit(1)
+        except UnisphereClientError as e:
+            console.print(f"[red]Error: {e}[/red]")
+            sys.exit(1)
+        except Exception as e:
+            console.print(f"[red]Error: {e}[/red]")
+            sys.exit(1)
+
+    return wrapper
+
+
+@handle_errors
 def cmd_version(args: argparse.Namespace) -> None:
     """Show version information.
 
@@ -449,6 +466,7 @@ def cmd_version(args: argparse.Namespace) -> None:
     console.print(f"Dell Unisphere Client v{__version__}")
 
 
+@handle_errors
 def cmd_configure(args: argparse.Namespace) -> None:
     """Configure the client.
 
@@ -465,6 +483,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
     console.print("Configuration saved.")
 
 
+@handle_errors
 def cmd_login(args: argparse.Namespace) -> None:
     """Login to the Unisphere API.
 
@@ -494,583 +513,463 @@ def cmd_login(args: argparse.Namespace) -> None:
 
         password = getpass.getpass("Password: ")
 
-    try:
-        # For tests, we don't need all parameters
-        if (
-            hasattr(args, "url")
-            and hasattr(args, "username")
-            and hasattr(args, "verify_ssl")
-        ):
-            verbose = getattr(args, "verbose", False)
-            client = get_client(
-                args.url, args.username, password, args.verify_ssl, verbose=verbose
-            )
-        else:
-            verbose = getattr(args, "verbose", False)
-            client = get_client(password=password, verbose=verbose)
+    # For tests, we don't need all parameters
+    if (
+        hasattr(args, "url")
+        and hasattr(args, "username")
+        and hasattr(args, "verify_ssl")
+    ):
+        verbose = getattr(args, "verbose", False)
+        client = get_client(
+            args.url, args.username, password, args.verify_ssl, verbose=verbose
+        )
+    else:
+        verbose = getattr(args, "verbose", False)
+        client = get_client(password=password, verbose=verbose)
 
-        client.login()
-        console.print("Login successful.")
-    except AuthenticationError as e:
-        console.print(f"[red]Authentication failed: {str(e)}[/red]")
-        sys.exit(1)
-    except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+    client.login()
+    console.print("Login successful.")
 
 
+@handle_errors
 def cmd_logout(args: argparse.Namespace) -> None:
     """Logout from the Unisphere API.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.logout()
-        console.print("Logout successful.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.logout()
+    console.print("Logout successful.")
 
 
+@handle_errors
 def cmd_system_info(args: argparse.Namespace) -> None:
     """Get basic system information.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.get_system_info()
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.get_system_info()
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        # Extract the entries from the response
+        entries = result.get("entries", [])
+        if entries:
+            # Get the first entry's content
+            content = entries[0].get("content", {})
+
+            # Create a table
+            table = Table(title="System Information")
+            table.add_column("Attribute")
+            table.add_column("Value")
+
+            for key, value in content.items():
+                table.add_row(key, str(value))
+
+            console.print(table)
         else:
-            # Extract the entries from the response
-            entries = result.get("entries", [])
-            if entries:
-                # Get the first entry's content
-                content = entries[0].get("content", {})
-
-                # Create a table
-                table = Table(title="System Information")
-                table.add_column("Attribute")
-                table.add_column("Value")
-
-                for key, value in content.items():
-                    table.add_row(key, str(value))
-
-                console.print(table)
-            else:
-                console.print("No system information available.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+            console.print("No system information available.")
 
 
+@handle_errors
 def cmd_software_version(args: argparse.Namespace) -> None:
     """Get installed software version information.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.get_installed_software_version()
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.get_installed_software_version()
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        # Extract the entries from the response
+        entries = result.get("entries", [])
+        if entries:
+            # Get the first entry's content
+            content = entries[0].get("content", {})
+
+            # Create a table
+            table = Table(title="Installed Software Version")
+            table.add_column("Attribute")
+            table.add_column("Value")
+
+            for key, value in content.items():
+                if isinstance(value, dict):
+                    table.add_row(key, json.dumps(value, indent=2))
+                else:
+                    table.add_row(key, str(value))
+
+            console.print(table)
         else:
-            # Extract the entries from the response
-            entries = result.get("entries", [])
-            if entries:
-                # Get the first entry's content
-                content = entries[0].get("content", {})
-
-                # Create a table
-                table = Table(title="Installed Software Version")
-                table.add_column("Attribute")
-                table.add_column("Value")
-
-                for key, value in content.items():
-                    if isinstance(value, dict):
-                        table.add_row(key, json.dumps(value, indent=2))
-                    else:
-                        table.add_row(key, str(value))
-
-                console.print(table)
-            else:
-                console.print("No software version information available.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+            console.print("No software version information available.")
 
 
+@handle_errors
 def cmd_candidate_versions(args: argparse.Namespace) -> None:
     """Get candidate software versions.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.get_candidate_software_versions()
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.get_candidate_software_versions()
+
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        # Extract the entries from the response
+        entries = result.get("entries", [])
+        if entries:
+            # Create a list of candidate versions
+            candidates = []
+            for entry in entries:
+                content = entry.get("content", {})
+                candidates.append(
+                    {
+                        "id": content.get("id", ""),
+                        "version": content.get("version", ""),
+                        "status": content.get("status", ""),
+                        "type": content.get("type", ""),
+                    }
+                )
+
+            print_table(candidates, "Candidate Software Versions")
         else:
-            # Extract the entries from the response
-            entries = result.get("entries", [])
-            if entries:
-                # Create a list of candidate versions
-                candidates = []
-                for entry in entries:
-                    content = entry.get("content", {})
-                    candidates.append(
-                        {
-                            "id": content.get("id", ""),
-                            "version": content.get("version", ""),
-                            "status": content.get("status", ""),
-                            "type": content.get("type", ""),
-                        }
-                    )
-
-                print_table(candidates, "Candidate Software Versions")
-            else:
-                console.print("No candidate software versions available.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+            console.print("No candidate software versions available.")
 
 
+@handle_errors
 def cmd_upgrade_sessions(args: argparse.Namespace) -> None:
     """Get software upgrade sessions.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.get_software_upgrade_sessions()
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.get_software_upgrade_sessions()
+
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        # Extract the entries from the response
+        entries = result.get("entries", [])
+        if entries:
+            # Create a list of upgrade sessions
+            sessions = []
+            for entry in entries:
+                content = entry.get("content", {})
+                sessions.append(
+                    {
+                        "id": content.get("id", ""),
+                        "status": content.get("status", ""),
+                        "percentComplete": content.get("percentComplete", ""),
+                        "description": content.get("description", ""),
+                    }
+                )
+
+            print_table(sessions, "Software Upgrade Sessions")
         else:
-            # Extract the entries from the response
-            entries = result.get("entries", [])
-            if entries:
-                # Create a list of upgrade sessions
-                sessions = []
-                for entry in entries:
-                    content = entry.get("content", {})
-                    sessions.append(
-                        {
-                            "id": content.get("id", ""),
-                            "status": content.get("status", ""),
-                            "percentComplete": content.get("percentComplete", ""),
-                            "description": content.get("description", ""),
-                        }
-                    )
-
-                print_table(sessions, "Software Upgrade Sessions")
-            else:
-                console.print("No software upgrade sessions available.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+            console.print("No software upgrade sessions available.")
 
 
+@handle_errors
 def cmd_verify_upgrade(args: argparse.Namespace) -> None:
     """Verify upgrade eligibility.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        # Note: The verifyUpgradeEligibility endpoint is stateless and doesn't use any parameters
-        # The version parameter is kept for backward compatibility but not used
-        raw_json = hasattr(args, "raw_json") and args.raw_json
-        version = getattr(
-            args, "version", None
-        )  # Get version if provided, otherwise None
-        result = client.verify_upgrade_eligibility(version, raw_json=raw_json)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    # Note: The verifyUpgradeEligibility endpoint is stateless and doesn't use any parameters
+    # The version parameter is kept for backward compatibility but not used
+    raw_json = hasattr(args, "raw_json") and args.raw_json
+    version = getattr(args, "version", None)  # Get version if provided, otherwise None
+    result = client.verify_upgrade_eligibility(version, raw_json=raw_json)
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        is_eligible = result.get(
+            "eligible", result.get("content", {}).get("isEligible", False)
+        )
+
+        if is_eligible:
+            console.print("[green]System is eligible for upgrade.[/green]")
         else:
-            is_eligible = result.get(
-                "eligible", result.get("content", {}).get("isEligible", False)
-            )
+            console.print("[yellow]System is not eligible for upgrade.[/yellow]")
 
-            if is_eligible:
-                console.print("[green]System is eligible for upgrade.[/green]")
-            else:
-                console.print("[yellow]System is not eligible for upgrade.[/yellow]")
+            # Display messages if available
+            messages = result.get("messages", [])
+            if messages:
+                console.print("\nReasons:")
+                for msg in messages:
+                    console.print(f"- {msg}")
 
-                # Display messages if available
-                messages = result.get("messages", [])
-                if messages:
-                    console.print("\nReasons:")
-                    for msg in messages:
-                        console.print(f"- {msg}")
+        if raw_json:
+            console.print("[yellow]Note: Showing raw API response[/yellow]")
 
-            if raw_json:
-                console.print("[yellow]Note: Showing raw API response[/yellow]")
-
-            console.print(f"Eligible: {is_eligible}")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+        console.print(f"Eligible: {is_eligible}")
 
 
+@handle_errors
 def cmd_create_upgrade(args: argparse.Namespace) -> None:
     """Create a software upgrade session.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        # For the test case, we need to call without the description parameter
-        result = client.create_upgrade_session(args.version)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    # For the test case, we need to call without the description parameter
+    result = client.create_upgrade_session(args.version)
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
-        else:
-            console.print("Upgrade session created successfully.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        console.print("Upgrade session created successfully.")
 
 
+@handle_errors
 def cmd_resume_upgrade(args: argparse.Namespace) -> None:
     """Resume a software upgrade session.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.resume_upgrade_session(args.id)
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
-        else:
-            console.print("Upgrade session resumed successfully.")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.resume_upgrade_session(args.id)
+
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        console.print("Upgrade session resumed successfully.")
 
 
+@handle_errors
 def cmd_upload_package(args: argparse.Namespace) -> None:
     """Upload a software package.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        # Check if file exists - in test mode, don't exit
-        if not os.path.exists(args.file):
-            console.print(f"[red]Error: File not found: {args.file}[/red]")
-            # In test environment, don't exit
-            if "pytest" not in sys.modules:
-                sys.exit(1)
-            return
 
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.upload_package(args.file)
+    # Check if file exists - in test mode, don't exit
+    if not os.path.exists(args.file):
+        console.print(f"[red]Error: File not found: {args.file}[/red]")
+        # In test environment, don't exit
+        if "pytest" not in sys.modules:
+            sys.exit(1)
+        return
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
-        else:
-            console.print("Software package uploaded successfully.")
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.upload_package(args.file)
 
-            # Extract file ID from the response
-            file_id = None
-            if "id" in result:
-                file_id = result["id"]
-            elif "content" in result and "id" in result["content"]:
-                file_id = result["content"]["id"]
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        console.print("Software package uploaded successfully.")
 
-            if file_id:
-                console.print(f"File ID: {file_id}")
-                console.print("To prepare this package, run:")
-                console.print(f"  uniclient prepare-software --file-id {file_id}")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+        # Extract file ID from the response
+        file_id = None
+        if "id" in result:
+            file_id = result["id"]
+        elif "content" in result and "id" in result["content"]:
+            file_id = result["content"]["id"]
+
+        if file_id:
+            console.print(f"File ID: {file_id}")
+            console.print("To prepare this package, run:")
+            console.print(f"  uniclient prepare-software --file-id {file_id}")
 
 
+@handle_errors
 def cmd_prepare_software(args: argparse.Namespace) -> None:
     """Prepare an uploaded software package.
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-        result = client.prepare_software(args.file_id)
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
+    result = client.prepare_software(args.file_id)
 
-        if hasattr(args, "json_output") and args.json_output:
-            print_json(result)
-        else:
-            console.print("Software package prepared successfully.")
+    if hasattr(args, "json_output") and args.json_output:
+        print_json(result)
+    else:
+        console.print("Software package prepared successfully.")
 
-            # Extract candidate ID from the response
-            candidate_id = None
-            if "id" in result:
-                candidate_id = result["id"]
-            elif "content" in result and "id" in result["content"]:
-                candidate_id = result["content"]["id"]
+        # Extract candidate ID from the response
+        candidate_id = None
+        if "id" in result:
+            candidate_id = result["id"]
+        elif "content" in result and "id" in result["content"]:
+            candidate_id = result["content"]["id"]
 
-            if candidate_id:
-                console.print(f"Candidate ID: {candidate_id}")
-                console.print("To create an upgrade session, run:")
-                console.print(f"  uniclient create-upgrade --version {candidate_id}")
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+        if candidate_id:
+            console.print(f"Candidate ID: {candidate_id}")
+            console.print("To create an upgrade session, run:")
+            console.print(f"  uniclient create-upgrade --version {candidate_id}")
 
 
-def cmd_monitor_upgrades(args: argparse.Namespace) -> None:
-    """Monitor all upgrade sessions (stateless, no session ID required).
-
-    Args:
-        args: Command line arguments.
-    """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
-
-        # Display initial message
-        console.print("Monitoring all upgrade sessions...")
-        console.print(
-            f"Polling every {args.interval} seconds (timeout: {args.timeout} seconds)"
-        )
-        console.print("Press Ctrl+C to stop monitoring")
-
-        # Create a progress display
-        from rich.progress import (
-            Progress,
-            TextColumn,
-            BarColumn,
-            TimeElapsedColumn,
-            SpinnerColumn,
-        )
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeElapsedColumn(),
-            console=console,
-            transient=False,
-        ) as progress:
-            # Create the main progress task
-            task_id = progress.add_task("Monitoring Upgrade Sessions", total=100)
-
-            # Track time for timeout
-            import time
-
-            start_time = time.time()
-            elapsed = 0
-
-            try:
-                while elapsed < args.timeout:
-                    # Get all upgrade sessions
-                    result = client.monitor_upgrade_sessions(
-                        raw_json=(
-                            args.json_output if hasattr(args, "json_output") else False
-                        )
-                    )
-
-                    # If raw JSON output is requested, just print and exit
-                    if hasattr(args, "json_output") and args.json_output:
-                        print_json(result)
-                        return
-
-                    # Process and display sessions
-                    sessions = result.get("sessions", [])
-
-                    if not sessions:
-                        console.print(
-                            "[yellow]No active upgrade sessions found[/yellow]"
-                        )
-                    else:
-                        # Create a table for session summary
-                        table = Table(title="Active Upgrade Sessions")
-                        table.add_column("ID")
-                        table.add_column("Status")
-                        table.add_column("Progress")
-                        table.add_column("Elapsed Time")
-
-                        for session in sessions:
-                            session_id = session.get("id", "Unknown")
-                            status = session.get("status", "Unknown")
-                            progress_pct = session.get("percentComplete", 0)
-                            elapsed_time = session.get("elapsedTime", "00:00:00")
-
-                            table.add_row(
-                                str(session_id),
-                                str(status),
-                                f"{progress_pct}%",
-                                str(elapsed_time),
-                            )
-
-                        console.print(table)
-
-                        # Update progress based on session progress
-                        if sessions and len(sessions) > 0:
-                            avg_progress = sum(
-                                session.get("percentComplete", 0)
-                                for session in sessions
-                            ) / len(sessions)
-                            progress.update(task_id, completed=avg_progress)
-
-                    # Wait for the next interval
-                    time.sleep(args.interval)
-                    elapsed = time.time() - start_time
-
-                console.print("[yellow]Monitoring timeout reached[/yellow]")
-
-            except KeyboardInterrupt:
-                console.print("[yellow]Monitoring stopped by user[/yellow]")
-                return
-
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
-
-
+@handle_errors
 def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
     """Monitor the upgrade session (stateless operation).
 
     Args:
         args: Command line arguments.
     """
-    try:
-        verbose = getattr(args, "verbose", False)
-        client = get_client(verbose=verbose)
-        client.login()
+    verbose = getattr(args, "verbose", False)
+    client = get_client(verbose=verbose)
+    client.login()
 
-        # Display initial message
-        console.print("Monitoring upgrade session...")
-        console.print(
-            f"Polling every {args.interval} seconds (timeout: {args.timeout} seconds)"
+    # Display initial message
+    console.print("Monitoring upgrade session...")
+    console.print(
+        f"Polling every {args.interval} seconds (timeout: {args.timeout} seconds)"
+    )
+    console.print("Press Ctrl+C to stop monitoring")
+
+    # Import Rich components for live display
+    from rich.live import Live
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.layout import Layout
+    from rich.progress import (
+        Progress,
+        TextColumn,
+        BarColumn,
+        TimeElapsedColumn,
+        SpinnerColumn,
+    )
+    import time
+
+    # Create a layout for organizing the display
+    layout = Layout()
+    layout.split(
+        Layout(name="header", size=3),
+        Layout(name="body"),
+    )
+    layout["body"].split_row(
+        Layout(name="progress", ratio=1),
+        Layout(name="tasks", ratio=2),
+    )
+
+    # Create progress bar
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Upgrade Progress"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+    )
+    task_id = progress.add_task("Upgrade", total=100)
+
+    # Create a function to update the display
+    def generate_display(status=None, percent=0, tasks=None, elapsed_time="00:00:00"):
+        # Update header
+        header_content = f"[bold]Status:[/bold] {status or 'Initializing'}\n"
+        header_content += (
+            f"[bold]Progress:[/bold] {percent}% | [bold]Elapsed:[/bold] {elapsed_time}"
         )
-        console.print("Press Ctrl+C to stop monitoring")
+        layout["header"].update(Panel(header_content, title="Upgrade Status"))
 
-        # Import Rich components for live display
-        from rich.live import Live
-        from rich.panel import Panel
-        from rich.table import Table
-        from rich.layout import Layout
-        from rich.progress import (
-            Progress,
-            TextColumn,
-            BarColumn,
-            TimeElapsedColumn,
-            SpinnerColumn,
-        )
-        import time
+        # Update progress
+        progress.update(task_id, completed=percent)
+        layout["progress"].update(Panel(progress))
 
-        # Create a layout for organizing the display
-        layout = Layout()
-        layout.split(
-            Layout(name="header", size=3),
-            Layout(name="body"),
-        )
-        layout["body"].split_row(
-            Layout(name="progress", ratio=1),
-            Layout(name="tasks", ratio=2),
-        )
+        # Update tasks table
+        task_table = Table(show_header=True, header_style="bold")
+        task_table.add_column("Task")
+        task_table.add_column("Status")
 
-        # Create progress bar
-        progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]Upgrade Progress"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeElapsedColumn(),
-        )
-        task_id = progress.add_task("Upgrade", total=100)
+        if tasks:
+            for task in tasks:
+                task_name = task.get("caption", "Unknown")
+                task_status = task.get("status", 0)
+                status_text = client.get_status_text(task_status)
 
-        # Create a function to update the display
-        def generate_display(
-            status=None, percent=0, tasks=None, elapsed_time="00:00:00"
-        ):
-            # Update header
-            header_content = f"[bold]Status:[/bold] {status or 'Initializing'}\n"
-            header_content += f"[bold]Progress:[/bold] {percent}% | [bold]Elapsed:[/bold] {elapsed_time}"
-            layout["header"].update(Panel(header_content, title="Upgrade Status"))
+                # Style based on status
+                if status_text == "COMPLETED":
+                    status_style = "[green]COMPLETED[/green]"
+                elif status_text == "IN_PROGRESS":
+                    status_style = "[yellow]IN_PROGRESS[/yellow]"
+                elif status_text == "PENDING":
+                    status_style = "[grey]PENDING[/grey]"
+                else:
+                    status_style = status_text
 
-            # Update progress
-            progress.update(task_id, completed=percent)
-            layout["progress"].update(Panel(progress))
+                task_table.add_row(task_name, status_style)
+        else:
+            task_table.add_row("No tasks found", "")
 
-            # Update tasks table
-            task_table = Table(show_header=True, header_style="bold")
-            task_table.add_column("Task")
-            task_table.add_column("Status")
+        layout["tasks"].update(Panel(task_table, title="Tasks"))
+        return layout
 
-            if tasks:
-                for task in tasks:
-                    task_name = task.get("caption", "Unknown")
-                    task_status = task.get("status", 0)
-                    status_text = client.get_status_text(task_status)
+    # Initial empty display
+    with Live(generate_display(), refresh_per_second=4) as live:
+        try:
+            # Start time for tracking
+            start_time = time.time()
+            elapsed_seconds = 0
 
-                    # Style based on status
-                    if status_text == "COMPLETED":
-                        status_style = "[green]COMPLETED[/green]"
-                    elif status_text == "IN_PROGRESS":
-                        status_style = "[yellow]IN_PROGRESS[/yellow]"
-                    elif status_text == "PENDING":
-                        status_style = "[grey]PENDING[/grey]"
-                    else:
-                        status_style = status_text
+            # Track if we're in a connection loss state
+            connection_lost = False
+            primary_sp_reboot_detected = False
+            retry_count = 0
+            max_retries = 30  # 5 minutes with 10-second retry interval
 
-                    task_table.add_row(task_name, status_style)
-            else:
-                task_table.add_row("No tasks found", "")
-
-            layout["tasks"].update(Panel(task_table, title="Tasks"))
-            return layout
-
-        # Initial empty display
-        with Live(generate_display(), refresh_per_second=4) as live:
-            try:
-                # Start time for tracking
-                start_time = time.time()
-                elapsed_seconds = 0
-
-                while elapsed_seconds < args.timeout:
+            while elapsed_seconds < args.timeout:
+                try:
                     # Get all upgrade sessions
                     response = client.upgrade_api.get_software_upgrade_sessions(
                         fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
                     )
+
+                    # Connection restored after loss
+                    if connection_lost:
+                        connection_lost = False
+                        # Initialize with default values if they don't exist yet
+                        current_percent = 0
+                        current_tasks = []
+                        current_elapsed = "00:00:00"
+                        live.update(
+                            generate_display(
+                                "Reconnected to Unisphere",
+                                current_percent,
+                                current_tasks,
+                                current_elapsed,
+                            )
+                        )
+                        time.sleep(1)  # Brief pause to show the reconnection message
+
+                    # Reset retry counter on successful connection
+                    retry_count = 0
 
                     # Find the active session (there should only be one)
                     session = {"content": {}}
@@ -1084,6 +983,15 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
                     percent_complete = content.get("percentComplete", 0)
                     elapsed_time = content.get("elapsedTime", "PT0H0M0S")
                     tasks = content.get("tasks", [])
+
+                    # Check if primary SP reboot is in progress
+                    for task in tasks:
+                        if (
+                            task.get("caption") == "Rebooting the primary SP"
+                            and task.get("status") == 1
+                        ):  # IN_PROGRESS
+                            primary_sp_reboot_detected = True
+                            break
 
                     # Update the live display
                     live.update(
@@ -1100,23 +1008,66 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
                     time.sleep(args.interval)
                     elapsed_seconds = time.time() - start_time
 
-                # Final update
-                if status_text == "COMPLETED":
-                    console.print("\n[green]Upgrade completed successfully![/green]")
-                else:
-                    console.print("\n[yellow]Monitoring timeout reached[/yellow]")
+                except (
+                    requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout,
+                    requests.exceptions.RequestException,
+                    UnisphereClientError,
+                ) as e:
+                    # Connection lost
+                    connection_lost = True
+                    retry_count += 1
 
-                # If JSON output is requested
-                if hasattr(args, "json_output") and args.json_output:
-                    print_json(session)
+                    # Create a special message if we detected primary SP reboot
+                    if primary_sp_reboot_detected:
+                        message = (
+                            "[yellow]Connection lost during primary SP reboot "
+                            "- this is expected[/yellow]\n"
+                        )
+                        message += (
+                            "[yellow]The system will automatically reconnect when "
+                            "the primary SP is back online[/yellow]"
+                        )
+                    else:
+                        message = f"[yellow]Connection error: {str(e)}[/yellow]\n"
+                        message += "[yellow]Retrying connection...[/yellow]"
 
-            except KeyboardInterrupt:
-                console.print("\n[yellow]Monitoring stopped by user[/yellow]")
-                return
+                    # Update the display with the connection error message
+                    error_layout = Layout()
+                    error_layout.split_column(
+                        Layout(Panel(Text(message)), name="header"),
+                        Layout(Panel(progress), name="progress"),
+                        Layout(
+                            Panel(Text("Waiting to reconnect..."), title="Tasks"),
+                            name="tasks",
+                        ),
+                    )
+                    live.update(error_layout)
 
-    except UnisphereClientError as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
-        sys.exit(1)
+                    # Use shorter retry interval during connection loss
+                    time.sleep(10)  # Retry every 10 seconds during connection loss
+                    elapsed_seconds = time.time() - start_time
+
+                    # If we've been trying too long without success and not during SP reboot
+                    if retry_count > max_retries and not primary_sp_reboot_detected:
+                        console.print(
+                            "\n[red]Failed to reconnect after multiple attempts[/red]"
+                        )
+                        return
+
+            # Final update
+            if status_text == "COMPLETED":
+                console.print("\n[green]Upgrade completed successfully![/green]")
+            else:
+                console.print("\n[yellow]Monitoring timeout reached[/yellow]")
+
+            # If JSON output is requested
+            if hasattr(args, "json_output") and args.json_output:
+                print_json(session)
+
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Monitoring stopped by user[/yellow]")
+            return
 
 
 def parse_args() -> argparse.Namespace:
@@ -1199,7 +1150,8 @@ def main() -> None:
     elif args.command == "monitor-upgrade":
         cmd_monitor_upgrade(args)
     elif args.command == "monitor-upgrades":
-        cmd_monitor_upgrades(args)
+        # Redirect to the single monitor-upgrade command
+        cmd_monitor_upgrade(args)
     else:
         parser.print_help()
 

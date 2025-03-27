@@ -346,6 +346,10 @@ class UpgradeApi(BaseApiClient):
         start_time = time.time()
         last_status = None
         last_percent = 0
+        connection_lost = False
+        primary_sp_reboot_detected = False
+        retry_count = 0
+        max_retries = 30  # 5 minutes with 10-second retry interval
 
         logger.info("Starting to monitor upgrade session")
         logger.info("Starting upgrade monitoring...")
@@ -357,51 +361,101 @@ class UpgradeApi(BaseApiClient):
                     f"Monitoring timed out after {timeout} seconds"
                 )
 
-            # Get all upgrade sessions
-            response = self.get_software_upgrade_sessions(
-                fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
-            )
+            try:
+                # Get all upgrade sessions
+                response = self.get_software_upgrade_sessions(
+                    fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
+                )
 
-            # Find the active session (there should only be one)
-            session = {"content": {}}
-            if "entries" in response and response["entries"]:
-                # Get the first session (there should only be one)
-                session = {"content": response["entries"][0]["content"]}
+                # Connection restored after loss
+                if connection_lost:
+                    connection_lost = False
+                    logger.info("Connection to Unisphere restored")
+                    # Reset retry counter on successful connection
+                    retry_count = 0
 
-            # Extract status information
-            content = session.get("content", {})
-            status = content.get("status")
-            percent_complete = content.get("percentComplete", 0)
+                # Find the active session (there should only be one)
+                session = {"content": {}}
+                if "entries" in response and response["entries"]:
+                    # Get the first session (there should only be one)
+                    session = {"content": response["entries"][0]["content"]}
 
-            # Print progress if it has changed
-            if status != last_status or percent_complete != last_percent:
-                status_text = self.get_status_text(status)
-                logger.info("Status: %s", status_text)
-                logger.info("Progress: %d%%", percent_complete)
+                # Extract status information
+                content = session.get("content", {})
+                status = content.get("status")
+                percent_complete = content.get("percentComplete", 0)
 
-                # Print task status
+                # Check for primary SP reboot task
                 tasks = content.get("tasks", [])
                 for task in tasks:
-                    task_status = task.get("status")
-                    task_status_text = self.get_status_text(task_status)
+                    if (
+                        task.get("caption") == "Rebooting the primary SP"
+                        and task.get("status") == 1
+                    ):  # IN_PROGRESS
+                        primary_sp_reboot_detected = True
+                        logger.info(
+                            "Primary SP reboot in progress - connection loss expected"
+                        )
+                        break
+
+                # Print progress if it has changed
+                if status != last_status or percent_complete != last_percent:
+                    status_text = self.get_status_text(status)
+                    logger.info("Status: %s", status_text)
+                    logger.info("Progress: %d%%", percent_complete)
+
+                    # Print task status
+                    tasks = content.get("tasks", [])
+                    for task in tasks:
+                        task_status = task.get("status")
+                        task_status_text = self.get_status_text(task_status)
+                        logger.info(
+                            "Task: %s - %s",
+                            task.get("caption", "Unknown"),
+                            task_status_text,
+                        )
+
+                    last_status = status
+                    last_percent = percent_complete
+
+                # Check if upgrade is completed
+                if status == 2:  # COMPLETED
+                    logger.info("Upgrade completed successfully!")
+                    return session
+
+                # Check if upgrade failed
+                if status == 3:  # FAILED
+                    logger.error("Upgrade failed!")
+                    raise UnisphereClientError("Upgrade failed", response=session)
+
+                # Wait before checking again
+                time.sleep(interval)
+
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.RequestException,
+            ) as e:
+                # Connection lost
+                connection_lost = True
+                retry_count += 1
+
+                if primary_sp_reboot_detected:
                     logger.info(
-                        "Task: %s - %s",
-                        task.get("caption", "Unknown"),
-                        task_status_text,
+                        "Connection lost during primary SP reboot - this is expected"
                     )
+                    logger.info(
+                        "Will automatically reconnect when the primary SP is back online"
+                    )
+                else:
+                    logger.warning(f"Connection error: {str(e)}")
+                    logger.info("Retrying connection...")
 
-                last_status = status
-                last_percent = percent_complete
+                # Use shorter retry interval during connection loss
+                time.sleep(10)  # Retry every 10 seconds during connection loss
 
-            # Check if upgrade is completed
-            if status == 2:  # COMPLETED
-                logger.info("Upgrade completed successfully!")
-                return session
-
-            # Check if upgrade failed
-            if status == 3:  # FAILED
-                logger.error("Upgrade failed!")
-                raise UnisphereClientError("Upgrade failed", response=session)
-
-            # Wait before checking again
-            time.sleep(interval)
+                # If we've been trying too long without success and not during SP reboot
+                if retry_count > max_retries and not primary_sp_reboot_detected:
+                    raise UnisphereClientError(
+                        f"Failed to reconnect after {retry_count} attempts"
+                    )

@@ -1,5 +1,5 @@
 # Dell Unisphere Client - Comprehensive Test Report
-Generated on: 2025-03-26 19:35:48
+Generated on: 2025-03-27 11:20:30
 
 
 ## Checking if API is running
@@ -14,7 +14,7 @@ Login successful
 ```json
 {
   "@base": "http://localhost:8000/api/types/basicSystemInfo/instances?per_page=2000",
-  "updated": "2025-03-26T19:35:48.749Z",
+  "updated": "2025-03-27T11:20:30.185Z",
   "links": [
     {
       "rel": "self",
@@ -39,7 +39,7 @@ Login successful
           "href": "/0"
         }
       ],
-      "updated": "2025-03-26T19:35:48.749Z"
+      "updated": "2025-03-27T11:20:30.185Z"
     }
   ]
 }
@@ -49,7 +49,7 @@ Login successful
 ```json
 {
   "@base": "http://localhost:8000/api/types/installedSoftwareVersion/instances?per_page=2000",
-  "updated": "2025-03-26T19:35:48.801Z",
+  "updated": "2025-03-27T11:20:30.241Z",
   "links": [
     {
       "rel": "self",
@@ -63,7 +63,7 @@ Login successful
         "id": "0",
         "version": "5.3.0",
         "revision": 120,
-        "releaseDate": "2025-03-26T19:35:44.159129",
+        "releaseDate": "2025-03-27T11:00:54.475526",
         "fullVersion": "Unity 5.3.0.0 (Release, Build 120, 2023-03-18 19:02:01, 5.3.0.0.5.120)",
         "languages": [
           {
@@ -93,7 +93,7 @@ Login successful
           {
             "name": "Drive Firmware Package 1",
             "version": "1.2.3",
-            "releaseDate": "2025-03-26T19:35:44.159139",
+            "releaseDate": "2025-03-27T11:00:54.475536",
             "upgradedeDriveCount": 24,
             "estimatedTime": 30,
             "isNewVersion": false
@@ -106,7 +106,7 @@ Login successful
           "href": "/0"
         }
       ],
-      "updated": "2025-03-26T19:35:48.801Z"
+      "updated": "2025-03-27T11:20:30.241Z"
     }
   ]
 }
@@ -116,7 +116,7 @@ Login successful
 ```json
 {
   "@base": "http://localhost:8000/api/types/candidateSoftwareVersion/instances?per_page=2000",
-  "updated": "2025-03-26T19:35:48.856Z",
+  "updated": "2025-03-27T11:20:30.294Z",
   "links": [
     {
       "rel": "self",
@@ -131,7 +131,7 @@ Login successful
 ```json
 {
   "@base": "http://localhost:8000/api/types/upgradeSession/instances?per_page=2000",
-  "updated": "2025-03-26T19:35:48.911Z",
+  "updated": "2025-03-27T11:20:30.351Z",
   "links": [
     {
       "rel": "self",
@@ -163,18 +163,18 @@ Created dummy upgrade file: ./tests/scripts/test_results/test_upgrade_client.bin
 ## Step 2: Uploading software package
 ```json
 {
-  "id": "file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138",
+  "id": "file_5e91bbb2-6a93-461d-8b27-1428ceb627e4",
   "filename": "./tests/scripts/test_results/test_upgrade_client.bin",
   "size": 10485760
 }
 ```
-Uploaded software package: file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138
+Uploaded software package: file_5e91bbb2-6a93-461d-8b27-1428ceb627e4
 
 ## Step 3: Verifying upgrade eligibility
 Raw eligibility response:
 ```json
 {
-  "updated": "2025-03-26T19:35:49.235210Z",
+  "updated": "2025-03-27T11:20:30.656284Z",
   "content": {
     "statusMessage": "",
     "overallStatus": false
@@ -195,7 +195,7 @@ Processed eligibility response:
 ## Step 4: Preparing software
 ```json
 {
-  "id": "candidate_ab762d44-85e4-4654-bd29-c4f3f6ff42bc",
+  "id": "candidate_97102fbc-f919-421c-9081-621f6f2360af",
   "status": "SUCCESS"
 }
 ```
@@ -205,7 +205,7 @@ Software prepared successfully
 ```json
 {
   "@base": "http://localhost:8000/api/types/candidateSoftwareVersion/instances?per_page=2000",
-  "updated": "2025-03-26T19:35:49.399Z",
+  "updated": "2025-03-27T11:20:30.821Z",
   "links": [
     {
       "rel": "self",
@@ -216,11 +216,11 @@ Software prepared successfully
     {
       "@base": "http://localhost:8000/api/instances/candidateSoftwareVersion",
       "content": {
-        "id": "file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138",
+        "id": "file_5e91bbb2-6a93-461d-8b27-1428ceb627e4",
         "version": "5.4.0.0",
         "fullVersion": "Unity ./tests/scripts/test_results/test_upgrade_client.bin",
         "revision": 0,
-        "releaseDate": "2025-03-26T19:35:49.173853",
+        "releaseDate": "2025-03-27T11:20:30.594211",
         "type": "SOFTWARE",
         "rebootRequired": true,
         "canPauseBeforeReboot": true
@@ -228,19 +228,19 @@ Software prepared successfully
       "links": [
         {
           "rel": "self",
-          "href": "/file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138"
+          "href": "/file_5e91bbb2-6a93-461d-8b27-1428ceb627e4"
         }
       ],
-      "updated": "2025-03-26T19:35:49.399Z"
+      "updated": "2025-03-27T11:20:30.821Z"
     },
     {
       "@base": "http://localhost:8000/api/instances/candidateSoftwareVersion",
       "content": {
-        "id": "candidate_ab762d44-85e4-4654-bd29-c4f3f6ff42bc",
+        "id": "candidate_97102fbc-f919-421c-9081-621f6f2360af",
         "version": "5.4.0",
         "fullVersion": "Unity 5.4.0.0 (Release, Build 150, 2023-06-18 19:02:01, 5.4.0.0.5.150)",
         "revision": 150,
-        "releaseDate": "2025-03-26T19:35:49.345973",
+        "releaseDate": "2025-03-27T11:20:30.769388",
         "type": "SOFTWARE",
         "rebootRequired": true,
         "canPauseBeforeReboot": true
@@ -248,15 +248,15 @@ Software prepared successfully
       "links": [
         {
           "rel": "self",
-          "href": "/candidate_ab762d44-85e4-4654-bd29-c4f3f6ff42bc"
+          "href": "/candidate_97102fbc-f919-421c-9081-621f6f2360af"
         }
       ],
-      "updated": "2025-03-26T19:35:49.399Z"
+      "updated": "2025-03-27T11:20:30.821Z"
     }
   ]
 }
 ```
-Found candidate ID: file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138
+Found candidate ID: file_5e91bbb2-6a93-461d-8b27-1428ceb627e4
 
 ## Step 6: Creating upgrade session
 ```json
@@ -265,12 +265,12 @@ Found candidate ID: file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138
   "content": {
     "id": "Upgrade_5.4.0.0",
     "type": 0,
-    "candidate": "file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138",
+    "candidate": "file_5e91bbb2-6a93-461d-8b27-1428ceb627e4",
     "caption": "Upgrade to 5.4.0.0",
     "status": 1,
-    "startTime": "2025-03-26T19:35:49.456245",
+    "startTime": "2025-03-27T11:20:30.875700",
     "messages": [],
-    "creationTime": "2025-03-26T19:35:49.456255",
+    "creationTime": "2025-03-27T11:20:30.875701",
     "elapsedTime": "PT0M",
     "percentComplete": 0,
     "tasks": [
@@ -278,84 +278,84 @@ Found candidate ID: file_19c397c2-d596-4c46-a0c7-ae8ed7bd8138
         "status": 1,
         "type": 0,
         "caption": "Preparing system",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:03:30.000"
       },
       {
         "status": 0,
         "type": 0,
         "caption": "Performing health checks",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:02:10.000"
       },
       {
         "status": 0,
         "type": 0,
         "caption": "Preparing system software",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:16:10.000"
       },
       {
         "status": 0,
         "type": 0,
         "caption": "Waiting for reboot command",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:00:05.000"
       },
       {
         "status": 0,
         "type": 0,
         "caption": "Performing health checks",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:01:05.000"
       },
       {
         "status": 0,
         "type": 2,
         "caption": "Installing new software on peer SP",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:16:50.000"
       },
       {
         "status": 0,
         "type": 3,
         "caption": "Rebooting peer SP",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:14:15.000"
       },
       {
         "status": 0,
         "type": 2,
         "caption": "Restarting services on peer SP",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:05:00.000"
       },
       {
         "status": 0,
         "type": 2,
         "caption": "Installing new software on primary SP",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:13:30.000"
       },
       {
         "status": 0,
         "type": 3,
         "caption": "Rebooting the primary SP",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:13:55.000"
       },
       {
         "status": 0,
         "type": 2,
         "caption": "Restarting services on primary SP",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:05:10.000"
       },
       {
         "status": 0,
         "type": 2,
         "caption": "Final tasks",
-        "creationTime": "2025-03-26T19:35:49.455978",
+        "creationTime": "2025-03-27T11:20:30.875629",
         "estRemainTime": "00:00:45.000"
       }
     ]

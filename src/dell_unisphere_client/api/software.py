@@ -1,10 +1,16 @@
 """Software API endpoints for Dell Unisphere."""
 
+import json
+import logging
+import os
 import requests
+from datetime import datetime
 from typing import Any, Dict
 from unittest.mock import MagicMock
 
 from dell_unisphere_client.api.base import BaseApiClient
+
+logger = logging.getLogger(__name__)
 
 
 class SoftwareApi(BaseApiClient):
@@ -173,6 +179,24 @@ class SoftwareApi(BaseApiClient):
         if self.csrf_token:
             headers["EMC-CSRF-TOKEN"] = self.csrf_token
 
+        # Log request details if verbose mode is enabled
+        request_start_time = datetime.now()
+        if self.verbose:
+            timestamp = request_start_time.strftime("%H:%M:%S.%f")[
+                :-3
+            ]  # Format: HH:MM:SS.mmm
+            logger.info(
+                f"====== UPLOAD REQUEST START [{timestamp}] ============================================"
+            )
+            logger.info(f"• URL:    POST {url}")
+            logger.info("• HEADERS:")
+            headers_str = "\n    ".join(
+                [f"{key}: {value}" for key, value in headers.items()]
+            )
+            logger.info(f"    {headers_str}")
+            logger.info(f"• FILE:    {file_path}")
+            logger.info(f"• FILE SIZE: {os.path.getsize(file_path)} bytes")
+
         with open(file_path, "rb") as f:
             files = {"file": (file_path, f, "application/octet-stream")}
             response = self.session.post(
@@ -182,5 +206,40 @@ class SoftwareApi(BaseApiClient):
                 timeout=self.timeout,
                 verify=self.verify_ssl,
             )
+
+        # Log response details if verbose mode is enabled
+        if self.verbose:
+            response_time = datetime.now()
+            duration_ms = int(
+                (response_time - request_start_time).total_seconds() * 1000
+            )
+            timestamp = response_time.strftime("%H:%M:%S.%f")[
+                :-3
+            ]  # Format: HH:MM:SS.mmm
+            logger.info(
+                f"====== UPLOAD RESPONSE [{timestamp}] ==============================================="
+            )
+            logger.info(
+                f"• Status:  {response.status_code} {response.reason} ({duration_ms}ms)"
+            )
+            logger.info("• HEADERS:")
+            headers_str = "\n    ".join(
+                [f"{key}: {value}" for key, value in response.headers.items()]
+            )
+            logger.info(f"    {headers_str}")
+
+            # Try to log response body if it's JSON
+            try:
+                response_json = response.json()
+                logger.info("• BODY:")
+                body_str = json.dumps(response_json, indent=2)
+                body_str = "\n    ".join(body_str.split("\n"))
+                logger.info(f"    {body_str}")
+            except ValueError:
+                logger.info("• BODY: [Not JSON]")
+                if (
+                    len(response.content) < 1000
+                ):  # Only log if response is not too large
+                    logger.info(f"    {response.text}")
 
         return self.handle_response(response)

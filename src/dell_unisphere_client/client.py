@@ -13,7 +13,6 @@ from urllib3.exceptions import InsecureRequestWarning
 
 from dell_unisphere_client.api import SystemApi, SoftwareApi, UpgradeApi
 from dell_unisphere_client.exceptions import AuthenticationError
-from dell_unisphere_client.session import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +48,7 @@ class UnisphereClient:
         self.timeout = timeout
         self.verbose = verbose
 
-        # Initialize session manager (stateless mode)
-        self.session_manager = SessionManager(
-            base_url=base_url,
-            username=username,
-            password=password,
-            verify_ssl=verify_ssl,
-            timeout=timeout,
-            verbose=verbose,
-        )
+        # No session manager in stateless mode
 
         # Initialize API clients
         self.session = None
@@ -82,7 +73,8 @@ class UnisphereClient:
         Raises:
             ValueError: If session file is corrupted or invalid
         """
-        return self.session_manager.load_session()
+        # No session management in stateless mode
+        return None
 
     def _is_session_expired(self, session_data: dict) -> bool:
         """Check if the session has expired.
@@ -96,7 +88,8 @@ class UnisphereClient:
         Returns:
             True if session is expired, False otherwise
         """
-        return self.session_manager.is_session_expired(session_data)
+        # In stateless mode, sessions are always considered expired
+        return True
 
     def _should_reuse_session(self) -> bool:
         """Determine if an existing session should be reused.
@@ -107,7 +100,8 @@ class UnisphereClient:
         Returns:
             False in stateless mode
         """
-        return self.session_manager.should_reuse_session()
+        # In stateless mode, sessions are never reused
+        return False
 
     def _create_session_file(self, session_data: dict) -> None:
         """Create a session file with the given session data.
@@ -118,7 +112,8 @@ class UnisphereClient:
         Args:
             session_data: Dictionary containing session information
         """
-        self.session_manager.create_session_file(session_data)
+        # No-op in stateless mode
+        pass
 
     def login(self) -> bool:
         """Login to the Unisphere API.
@@ -158,8 +153,7 @@ class UnisphereClient:
                 )
 
             # Store session in session manager for current operation
-            self.session_manager.session = self.session
-            self.session_manager.csrf_token = self.csrf_token
+            # No session manager in stateless mode
 
             self._logged_in = True
             self._initialize_api_clients()
@@ -404,11 +398,7 @@ class UnisphereClient:
                 candidate_version_id, description
             )
 
-            # Update session file with new session information
-            session_data = self.session_manager.load_session()
-            if session_data and "content" in result and "id" in result["content"]:
-                session_data["upgrade_session_id"] = result["content"].get("id")
-                self.session_manager.create_session_file(session_data)
+            # No session management in stateless mode
 
             return result
 
