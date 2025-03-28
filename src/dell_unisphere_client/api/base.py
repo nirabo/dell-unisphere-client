@@ -89,6 +89,7 @@ class BaseApiClient:
         data: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
+        custom_timeout: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Make an API request.
 
@@ -174,6 +175,9 @@ class BaseApiClient:
 
         # Create a local variable with a different name to avoid namespace conflict with json module
         json_payload = json_data
+        # Use custom timeout if provided, otherwise use the default timeout
+        request_timeout = custom_timeout if custom_timeout is not None else self.timeout
+
         response = self.session.request(
             method=method,
             url=url,
@@ -182,7 +186,7 @@ class BaseApiClient:
             json=json_payload,  # Using renamed variable to avoid conflict with json module
             headers=request_headers,
             verify=self.verify_ssl,
-            timeout=self.timeout,
+            timeout=request_timeout,
         )
 
         # Log response details if verbose mode is enabled

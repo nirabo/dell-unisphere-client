@@ -1,5 +1,5 @@
 #!/bin/bash
-# uniclient - Bash entrypoint for Dell Unisphere Client
+# unisphere - Bash entrypoint for Dell Unisphere Client
 
 # Determine the script's directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"

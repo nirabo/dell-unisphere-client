@@ -16,11 +16,14 @@ logger = logging.getLogger(__name__)
 class UpgradeApi(BaseApiClient):
     """API client for upgrade-related endpoints."""
 
-    def get_software_upgrade_sessions(self, fields: str = None) -> Dict[str, Any]:
+    def get_software_upgrade_sessions(
+        self, fields: str = None, request_timeout: Optional[int] = None
+    ) -> Dict[str, Any]:
         """Get software upgrade sessions.
 
         Args:
             fields: Optional comma-separated list of fields to include in the response.
+            request_timeout: Optional custom timeout for this specific request (in seconds).
 
         Returns:
             Software upgrade sessions.
@@ -69,7 +72,12 @@ class UpgradeApi(BaseApiClient):
         if fields:
             params["fields"] = fields
 
-        return self.request("GET", "/api/types/upgradeSession/instances", params=params)
+        return self.request(
+            "GET",
+            "/api/types/upgradeSession/instances",
+            params=params,
+            custom_timeout=request_timeout,
+        )
 
     def get_software_upgrade_session(self, session_id: str) -> Dict[str, Any]:
         """Get a specific software upgrade session.
@@ -362,9 +370,13 @@ class UpgradeApi(BaseApiClient):
                 )
 
             try:
+                # Use a shorter timeout during primary SP reboot to avoid long waits
+                request_timeout = 30 if primary_sp_reboot_detected else None
+
                 # Get all upgrade sessions
                 response = self.get_software_upgrade_sessions(
-                    fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
+                    fields="id,status,caption,percentComplete,type,elapsedTime,tasks",
+                    request_timeout=request_timeout,
                 )
 
                 # Connection restored after loss

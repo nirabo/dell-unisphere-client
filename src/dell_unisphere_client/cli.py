@@ -38,7 +38,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
-from rich.text import Text
+from rich.console import Group
 
 from dell_unisphere_client import __version__
 from dell_unisphere_client import (
@@ -67,6 +67,13 @@ DEFAULT_CONFIG = {
     "password": "Password123!",
     "verify_ssl": False,
 }
+
+# Messages
+MSG_PRIMARY_SP_REBOOT = (
+    "[bold]Status:[/bold] [yellow]RECONNECTING[/yellow]\n"
+    "[bold]Error:[/bold] [yellow]Primary SP reboot detected[/yellow]\n"
+    "[bold]Action:[/bold] [yellow]Retrying connection...[/yellow]"
+)
 
 
 def load_config() -> Dict[str, Any]:
@@ -388,43 +395,17 @@ def create_parser() -> argparse.ArgumentParser:
         "monitor-upgrade", help="Monitor the upgrade session (stateless operation)"
     )
     add_common_arguments(monitor_upgrade_parser)
-
-    # Monitor all upgrades command (stateless, no session ID required)
-    monitor_upgrades_parser = subparsers.add_parser(
-        "monitor-upgrades",
-        help="Monitor all upgrade sessions (stateless, no session ID required)",
-    )
-    add_common_arguments(monitor_upgrades_parser)
-    monitor_upgrades_parser.add_argument(
+    monitor_upgrade_parser.add_argument(
         "--interval",
         type=int,
         default=5,
         help="Polling interval in seconds (default: 5)",
     )
-    monitor_upgrades_parser.add_argument(
+    monitor_upgrade_parser.add_argument(
         "--timeout",
         type=int,
         default=7200,
         help="Maximum time to wait in seconds (default: 7200 or 2 hours)",
-    )
-    monitor_upgrades_parser.add_argument(
-        "-j",
-        "--json",
-        action="store_true",
-        dest="json_output",
-        help="Output in JSON format",
-    )
-    monitor_upgrade_parser.add_argument(
-        "--interval",
-        type=int,
-        default=5,
-        help="Polling interval in seconds (default: 5)",
-    )
-    monitor_upgrade_parser.add_argument(
-        "--timeout",
-        type=int,
-        default=7200,
-        help="Maximum time to wait in seconds (default: 7200, or 2 hours)",
     )
     monitor_upgrade_parser.add_argument(
         "-j",
@@ -804,7 +785,7 @@ def cmd_upload_package(args: argparse.Namespace) -> None:
         if file_id:
             console.print(f"File ID: {file_id}")
             console.print("To prepare this package, run:")
-            console.print(f"  uniclient prepare-software --file-id {file_id}")
+            console.print(f"  unisphere prepare-software --file-id {file_id}")
 
 
 @handle_errors
@@ -834,7 +815,7 @@ def cmd_prepare_software(args: argparse.Namespace) -> None:
         if candidate_id:
             console.print(f"Candidate ID: {candidate_id}")
             console.print("To create an upgrade session, run:")
-            console.print(f"  uniclient create-upgrade --version {candidate_id}")
+            console.print(f"  unisphere create-upgrade --version {candidate_id}")
 
 
 @handle_errors
@@ -865,26 +846,20 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
         TextColumn,
         BarColumn,
         TimeElapsedColumn,
-        SpinnerColumn,
     )
     import time
 
-    # Create a layout for organizing the display
+    # Create a simplified layout with just header and tasks
     layout = Layout()
     layout.split(
-        Layout(name="header", size=3),
-        Layout(name="body"),
-    )
-    layout["body"].split_row(
-        Layout(name="progress", ratio=1),
-        Layout(name="tasks", ratio=2),
+        Layout(name="header", size=3),  # Header for status info
+        Layout(name="tasks"),  # Single panel for tasks
     )
 
-    # Create progress bar
+    # Create progress bar for the header
     progress = Progress(
-        SpinnerColumn(),
-        TextColumn("[bold blue]Upgrade Progress"),
-        BarColumn(),
+        TextColumn("[bold blue]Upgrade Progress[/bold blue]"),
+        BarColumn(bar_width=40),  # Fixed width for better display
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
         TimeElapsedColumn(),
     )
@@ -892,20 +867,96 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
 
     # Create a function to update the display
     def generate_display(status=None, percent=0, tasks=None, elapsed_time="00:00:00"):
-        # Update header
-        header_content = f"[bold]Status:[/bold] {status or 'Initializing'}\n"
-        header_content += (
-            f"[bold]Progress:[/bold] {percent}% | [bold]Elapsed:[/bold] {elapsed_time}"
-        )
-        layout["header"].update(Panel(header_content, title="Upgrade Status"))
+        # Calculate estimated remaining time based on pending and in-progress tasks
+        est_remain_seconds = 0
+        if tasks:
+            for task in tasks:
+                task_status = task.get("status", 0)
+                est_time = task.get("estRemainTime", "")
 
-        # Update progress
+                # Only count pending tasks and the in-progress task
+                if task_status == 0 or task_status == 1:  # PENDING or IN_PROGRESS
+                    if est_time and est_time != "--":
+                        try:
+                            # Parse the time format (HH:MM:SS.mmm)
+                            time_parts = est_time.split(":")
+                            hours = int(time_parts[0])
+                            minutes = int(time_parts[1])
+                            seconds = int(time_parts[2].split(".")[0])
+
+                            # Add to total estimated time
+                            est_remain_seconds += hours * 3600 + minutes * 60 + seconds
+                        except (ValueError, IndexError):
+                            pass  # Skip if parsing fails
+
+        # Format the estimated remaining time
+        if est_remain_seconds > 0:
+            hours, remainder = divmod(est_remain_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            est_remain_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            est_remain_time = "--:--:--"
+
+        # Calculate cumulative estimated time (total of all tasks)
+        cumulative_est_seconds = 0
+        if tasks:
+            for task in tasks:
+                est_time = task.get("estRemainTime", "")
+                if est_time and est_time != "--":
+                    try:
+                        # Parse the time format (HH:MM:SS.mmm)
+                        time_parts = est_time.split(":")
+                        hours = int(time_parts[0])
+                        minutes = int(time_parts[1])
+                        seconds = int(time_parts[2].split(".")[0])
+
+                        # Add to total estimated time
+                        cumulative_est_seconds += hours * 3600 + minutes * 60 + seconds
+                    except (ValueError, IndexError):
+                        pass  # Skip if parsing fails
+
+        # Format the cumulative estimated time
+        if cumulative_est_seconds > 0:
+            hours, remainder = divmod(cumulative_est_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            cumulative_est_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            cumulative_est_time = "--:--:--"
+
+        # Create a simple header with clear status information
+        # First line: Status and progress
+        header_content = f"[bold]Status:[/bold] {status or 'Initializing'} | [bold]Progress:[/bold] {percent}%\n"
+
+        # Second line: All time information
+        header_content += f"[bold]Elapsed:[/bold] {elapsed_time}"
+
+        # Add estimated remaining time with color coding
+        if est_remain_seconds > 0:
+            header_content += (
+                f" | [bold][cyan]Est. Remaining:[/cyan] {est_remain_time}[/bold]"
+            )
+        else:
+            header_content += f" | [bold]Est. Remaining:[/bold] {est_remain_time}"
+
+        # Add cumulative estimated time
+        header_content += f" | [bold]Total Est. Time:[/bold] {cumulative_est_time}"
+
+        # Update progress bar
         progress.update(task_id, completed=percent)
-        layout["progress"].update(Panel(progress))
 
-        # Update tasks table
+        # Add progress bar to the header content
+        progress_panel = Panel(progress)
+
+        # Create the combined header panel
+        header_panel = Panel.fit(
+            Group(header_content, progress_panel), title="Upgrade Status"
+        )
+        layout["header"].update(header_panel)
+
+        # Update tasks table with reordered columns
         task_table = Table(show_header=True, header_style="bold")
         task_table.add_column("Task")
+        task_table.add_column("Est. Time")
         task_table.add_column("Status")
 
         if tasks:
@@ -913,20 +964,48 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
                 task_name = task.get("caption", "Unknown")
                 task_status = task.get("status", 0)
                 status_text = client.get_status_text(task_status)
+                est_time = task.get("estRemainTime", "--")
+
+                # Format the estimated time to be more readable
+                if est_time and est_time != "--":
+                    # Convert from format like "00:16:10.000" to "16m 10s"
+                    try:
+                        # Parse the time format (HH:MM:SS.mmm)
+                        time_parts = est_time.split(":")
+                        hours = int(time_parts[0])
+                        minutes = int(time_parts[1])
+                        seconds = int(time_parts[2].split(".")[0])
+
+                        # Format as a readable string
+                        if hours > 0:
+                            est_time_display = f"{hours}h {minutes}m"
+                        elif minutes > 0:
+                            est_time_display = f"{minutes}m {seconds}s"
+                        else:
+                            est_time_display = f"{seconds}s"
+                    except (ValueError, IndexError):
+                        est_time_display = est_time  # Use original if parsing fails
+                else:
+                    est_time_display = "--"
 
                 # Style based on status
                 if status_text == "COMPLETED":
                     status_style = "[green]COMPLETED[/green]"
+                    est_time_display = "[green]Done[/green]"
                 elif status_text == "IN_PROGRESS":
                     status_style = "[yellow]IN_PROGRESS[/yellow]"
+                    if est_time_display != "--":
+                        est_time_display = f"[yellow]{est_time_display}[/yellow]"
                 elif status_text == "PENDING":
                     status_style = "[grey]PENDING[/grey]"
+                    if est_time_display != "--":
+                        est_time_display = f"[grey]{est_time_display}[/grey]"
                 else:
                     status_style = status_text
 
-                task_table.add_row(task_name, status_style)
+                task_table.add_row(task_name, est_time_display, status_style)
         else:
-            task_table.add_row("No tasks found", "")
+            task_table.add_row("No tasks found", "--", "")
 
         layout["tasks"].update(Panel(task_table, title="Tasks"))
         return layout
@@ -946,7 +1025,7 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
 
             while elapsed_seconds < args.timeout:
                 try:
-                    # Get all upgrade sessions
+                    # Get all upgrade sessions with detailed task information
                     response = client.upgrade_api.get_software_upgrade_sessions(
                         fields="id,status,caption,percentComplete,type,elapsedTime,tasks"
                     )
@@ -976,13 +1055,26 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
                     if "entries" in response and response["entries"]:
                         session = {"content": response["entries"][0]["content"]}
 
-                    # Extract status information
-                    content = session.get("content", {})
-                    status_code = content.get("status")
-                    status_text = client.get_status_text(status_code)
-                    percent_complete = content.get("percentComplete", 0)
-                    elapsed_time = content.get("elapsedTime", "PT0H0M0S")
-                    tasks = content.get("tasks", [])
+                        # Extract status information
+                        content = session.get("content", {})
+                        status_code = content.get("status")
+                        status_text = client.get_status_text(status_code)
+                        percent_complete = content.get("percentComplete", 0)
+                        elapsed_time = content.get("elapsedTime", "PT0H0M0S")
+                        tasks = content.get("tasks", [])
+                    else:
+                        # No upgrade session detected
+                        status_text = "NO_SESSION"
+                        percent_complete = 0
+                        elapsed_time = "00:00:00"
+                        tasks = []
+
+                        # Create a special message for no session
+                        message = (
+                            "[bold]Status:[/bold] [cyan]NO ACTIVE UPGRADE SESSION[/cyan]\n"
+                            "[bold]Info:[/bold] No upgrade session was found on the system\n"
+                            "[bold]Action:[/bold] Start an upgrade session to begin monitoring"
+                        )
 
                     # Check if primary SP reboot is in progress
                     for task in tasks:
@@ -994,18 +1086,55 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
                             break
 
                     # Update the live display
-                    live.update(
-                        generate_display(
-                            status_text, percent_complete, tasks, elapsed_time
+                    if status_text == "NO_SESSION":
+                        # Create a tasks table that shows no session information
+                        task_table = Table(show_header=True, header_style="bold")
+                        task_table.add_column("Task")
+                        task_table.add_column("Est. Time")
+                        task_table.add_column("Status")
+                        task_table.add_row(
+                            "No active upgrade session", "--", "[cyan]NONE[/cyan]"
                         )
-                    )
+
+                        # Update the header with progress bar and tasks panel
+                        progress.update(task_id, completed=0)
+
+                        # Create a combined header panel with message and progress
+                        # Use a more visible format for the header
+                        from rich.text import Text
+
+                        # Format the message for better visibility
+                        header_text = Text.from_markup(message)
+
+                        progress_panel = Panel(progress)
+                        header_panel = Panel.fit(
+                            Group(header_text, progress_panel), title="Upgrade Status"
+                        )
+                        layout["header"].update(header_panel)
+                        layout["tasks"].update(Panel(task_table, title="Tasks"))
+
+                        live.update(layout)
+                    else:
+                        # Normal update with session data
+                        live.update(
+                            generate_display(
+                                status_text, percent_complete, tasks, elapsed_time
+                            )
+                        )
 
                     # Check if upgrade is complete
                     if status_text == "COMPLETED":
                         break
 
-                    # Wait for the next interval
-                    time.sleep(args.interval)
+                    # If no session, wait a bit longer between checks
+                    if status_text == "NO_SESSION":
+                        time.sleep(
+                            args.interval * 2
+                        )  # Check less frequently when no session exists
+                    else:
+                        time.sleep(args.interval)
+
+                    # Update elapsed time
                     elapsed_seconds = time.time() - start_time
 
                 except (
@@ -1020,29 +1149,49 @@ def cmd_monitor_upgrade(args: argparse.Namespace) -> None:
 
                     # Create a special message if we detected primary SP reboot
                     if primary_sp_reboot_detected:
-                        message = (
-                            "[yellow]Connection lost during primary SP reboot "
-                            "- this is expected[/yellow]\n"
-                        )
-                        message += (
-                            "[yellow]The system will automatically reconnect when "
-                            "the primary SP is back online[/yellow]"
-                        )
+                        message = MSG_PRIMARY_SP_REBOOT
                     else:
-                        message = f"[yellow]Connection error: {str(e)}[/yellow]\n"
-                        message += "[yellow]Retrying connection...[/yellow]"
+                        message = (
+                            "[bold]Status:[/bold] [yellow]RECONNECTING[/yellow]\n"
+                            f"[bold]Error:[/bold] [yellow]{str(e)}[/yellow]\n"
+                            "[bold]Action:[/bold] [yellow]Retrying connection...[/yellow]"
+                        )
 
-                    # Update the display with the connection error message
-                    error_layout = Layout()
-                    error_layout.split_column(
-                        Layout(Panel(Text(message)), name="header"),
-                        Layout(Panel(progress), name="progress"),
-                        Layout(
-                            Panel(Text("Waiting to reconnect..."), title="Tasks"),
-                            name="tasks",
-                        ),
+                    # Update the display with the connection error message while maintaining layout
+                    # Keep the same layout structure but update content to show reconnection status
+                    current_percent = (
+                        percent_complete if "percent_complete" in locals() else 0
                     )
-                    live.update(error_layout)
+                    current_elapsed = (
+                        elapsed_time if "elapsed_time" in locals() else "00:00:00"
+                    )
+
+                    # Create a tasks table that shows the reconnection status
+                    task_table = Table(show_header=True, header_style="bold")
+                    task_table.add_column("Task")
+                    task_table.add_column("Est. Time")
+                    task_table.add_column("Status")
+                    task_table.add_row(
+                        "Waiting to reconnect...", "--", "[yellow]IN_PROGRESS[/yellow]"
+                    )
+
+                    # Update the layout with connection warning but keep structure consistent
+                    # Create a combined header panel with message and progress
+                    # Use a more visible format for the header
+                    from rich.text import Text
+
+                    # Format the message for better visibility
+                    header_text = Text.from_markup(message)
+
+                    progress.update(task_id, completed=current_percent)
+                    progress_panel = Panel(progress)
+                    header_panel = Panel.fit(
+                        Group(header_text, progress_panel), title="Upgrade Status"
+                    )
+                    layout["header"].update(header_panel)
+                    layout["tasks"].update(Panel(task_table, title="Tasks"))
+
+                    live.update(layout)
 
                     # Use shorter retry interval during connection loss
                     time.sleep(10)  # Retry every 10 seconds during connection loss
@@ -1148,9 +1297,6 @@ def main() -> None:
     elif args.command == "prepare-software":
         cmd_prepare_software(args)
     elif args.command == "monitor-upgrade":
-        cmd_monitor_upgrade(args)
-    elif args.command == "monitor-upgrades":
-        # Redirect to the single monitor-upgrade command
         cmd_monitor_upgrade(args)
     else:
         parser.print_help()
