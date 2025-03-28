@@ -39,18 +39,38 @@ You will be prompted for your password.
 
 #### Commands
 
-- `unisphere version`: Show version information
-- `unisphere configure`: Configure the client
-- `unisphere login`: Login to the Unisphere API
-- `unisphere logout`: Logout from the Unisphere API
-- `unisphere system-info`: Get basic system information
-- `unisphere software-version`: Get installed software version information
-- `unisphere candidate-versions`: Get candidate software versions
-- `unisphere upgrade-sessions`: Get software upgrade sessions
-- `unisphere verify-upgrade <candidate-id>`: Verify upgrade eligibility
-- `unisphere create-upgrade <candidate-id>`: Create a software upgrade session
-- `unisphere resume-upgrade <session-id>`: Resume a software upgrade session
-- `unisphere upload-package <file-path>`: Upload a software package
+The CLI has been reorganized into a more intuitive nested command structure with three main command groups:
+
+**System Operations**
+```
+unisphere system <command>
+```
+- `login`: Login to the Unisphere API
+- `logout`: Logout from the Unisphere API
+- `configure`: Configure the client
+- `info`: Get basic system information
+- `software-version`: Get installed software version information
+
+**Candidate Software Operations**
+```
+unisphere candidate <command>
+```
+- `version`: Get candidate software versions
+- `upload`: Upload a software package
+- `prepare`: Prepare an uploaded software package
+
+**Upgrade Operations**
+```
+unisphere upgrade <command>
+```
+- `sessions`: Get software upgrade sessions
+- `verify`: Verify upgrade eligibility
+- `create`: Create a software upgrade session
+- `resume`: Resume a software upgrade session
+- `cancel`: Cancel a software upgrade session
+- `monitor`: Monitor the upgrade session (stateless operation)
+
+The version information is now displayed in the help banner when running `unisphere` without arguments or with `--help`.
 
 All commands support the following flags:
 - `--json` - Output the raw JSON response

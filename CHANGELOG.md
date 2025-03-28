@@ -5,6 +5,19 @@ All notable changes to the Dell Unisphere Client will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-03-28
+
+### Added
+- New nested CLI command structure with three main command groups
+- New `cancel` upgrade command placeholder for future implementation
+- Version information now displayed in the help banner
+
+### Changed
+- Reorganized CLI commands into logical groups: `system`, `candidate`, and `upgrade`
+- Removed standalone version command in favor of integrated version display
+- Updated all tests and documentation to reflect the new command structure
+- Improved command discoverability with better organization
+
 ## [0.5.0] - 2025-03-28
 
 ### Added
