@@ -40,7 +40,7 @@ from rich.logging import RichHandler
 from rich.table import Table
 from rich.console import Group
 
-from dell_unisphere_client import __version__
+from dell_unisphere_client.version import get_version
 from dell_unisphere_client import (
     AuthenticationError,
     UnisphereClientError,
@@ -195,8 +195,12 @@ def create_parser() -> argparse.ArgumentParser:
         Configured argument parser.
     """
 
+    # Always get version directly from pyproject.toml to ensure consistency
+    # This ensures the CLI banner shows the same version as in pyproject.toml
+    cli_version = get_version()
+
     parser = argparse.ArgumentParser(
-        description=f"Dell Unisphere CLI v{__version__} - A command-line interface for Dell Unisphere REST API"
+        description=f"Dell Unisphere CLI v{cli_version} - A command-line interface for Dell Unisphere REST API"
     )
     # Add global verbose flag
     parser.add_argument(
@@ -490,7 +494,9 @@ def cmd_version(args: argparse.Namespace) -> None:
     Args:
         args: Command line arguments.
     """
-    console.print(f"Dell Unisphere Client v{__version__}")
+    # Use get_version() to ensure consistent version display
+    version = get_version()
+    console.print(f"Dell Unisphere Client v{version}")
 
 
 @handle_errors
