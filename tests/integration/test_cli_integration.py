@@ -145,6 +145,7 @@ class TestCLIIntegration:
                 "sys.argv",
                 [
                     "uniclient",
+                    "system",
                     "configure",
                     "--url",
                     "https://example.com",
@@ -166,21 +167,21 @@ class TestCLIIntegration:
             assert config["verify_ssl"] is True
 
             # Step 2: Login
-            with patch("sys.argv", ["uniclient", "login"]):
+            with patch("sys.argv", ["uniclient", "system", "login"]):
                 cli.main()
 
             # Verify login was called
             mock_client.login.assert_called_once()
 
             # Step 3: Get software version
-            with patch("sys.argv", ["uniclient", "software-version"]):
+            with patch("sys.argv", ["uniclient", "system", "software-version"]):
                 cli.main()
 
             # Verify get_installed_software_version was called
             mock_client.get_installed_software_version.assert_called_once()
 
             # Step 4: Get candidate versions
-            with patch("sys.argv", ["uniclient", "candidate-versions"]):
+            with patch("sys.argv", ["uniclient", "candidate", "version"]):
                 cli.main()
 
             # Verify get_candidate_software_versions was called
@@ -189,7 +190,7 @@ class TestCLIIntegration:
             # Step 5: Verify upgrade
             with patch(
                 "sys.argv",
-                ["uniclient", "verify-upgrade", "--version", "5.4.0.0.5.150"],
+                ["uniclient", "upgrade", "verify", "--version", "5.4.0.0.5.150"],
             ):
                 cli.main()
 
@@ -202,7 +203,7 @@ class TestCLIIntegration:
             # Step 6: Create upgrade
             with patch(
                 "sys.argv",
-                ["uniclient", "create-upgrade", "--version", "5.4.0.0.5.150"],
+                ["uniclient", "upgrade", "create", "--version", "5.4.0.0.5.150"],
             ):
                 cli.main()
 
@@ -210,7 +211,7 @@ class TestCLIIntegration:
             mock_client.create_upgrade_session.assert_called_once_with("5.4.0.0.5.150")
 
             # Step 7: Logout
-            with patch("sys.argv", ["uniclient", "logout"]):
+            with patch("sys.argv", ["uniclient", "system", "logout"]):
                 cli.main()
 
             # Verify logout was called
@@ -233,6 +234,7 @@ class TestCLIIntegration:
                 "sys.argv",
                 [
                     "uniclient",
+                    "system",
                     "configure",
                     "--url",
                     "https://example.com",
@@ -248,7 +250,7 @@ class TestCLIIntegration:
 
             # Try to login and expect error handling with sys.exit(1)
             with (
-                patch("sys.argv", ["uniclient", "login"]),
+                patch("sys.argv", ["uniclient", "system", "login"]),
                 pytest.raises(SystemExit) as excinfo,
             ):
                 cli.main()

@@ -3,6 +3,11 @@
 Test script for Dell EMC Unisphere Client
 This script tests both general API endpoints and the complete upgrade flow
 using the Dell Unisphere Client instead of curl.
+
+The test flow follows the same steps as the CLI commands would:
+1. System operations (login, system info) - equivalent to 'unisphere system' commands
+2. Candidate operations (upload, prepare, version) - equivalent to 'unisphere candidate' commands
+3. Upgrade operations (verify, create, monitor) - equivalent to 'unisphere upgrade' commands
 """
 
 import os
@@ -144,9 +149,9 @@ def run_api_tests(client, report):
     """Run general API tests."""
     report.add_header("Running General API Tests")
 
-    # Test 1: Login
+    # Test 1: Login (equivalent to 'unisphere system login')
     logger.info("Testing: Login")
-    report.add_header("Login")
+    report.add_header("Login (unisphere system login)")
     try:
         client.login()
         report.add_content("Login successful")
@@ -156,9 +161,9 @@ def run_api_tests(client, report):
         report.add_content(f"Error: {str(e)}")
         return False
 
-    # Test 2: Get basic system info
+    # Test 2: Get basic system info (equivalent to 'unisphere system info')
     logger.info("Testing: Get basic system info")
-    report.add_header("Getting Basic System Info")
+    report.add_header("Getting Basic System Info (unisphere system info)")
     try:
         response = client.get_basic_system_info()
         report.add_json(response)
@@ -167,9 +172,11 @@ def run_api_tests(client, report):
         logger.error(f"Error getting basic system info: {str(e)}")
         report.add_content(f"Error: {str(e)}")
 
-    # Test 3: Get installed software version
+    # Test 3: Get installed software version (equivalent to 'unisphere system software-version')
     logger.info("Testing: Get installed software version")
-    report.add_header("Getting Installed Software Version")
+    report.add_header(
+        "Getting Installed Software Version (unisphere system software-version)"
+    )
     try:
         response = client.get_installed_software_version()
         report.add_json(response)
@@ -178,9 +185,11 @@ def run_api_tests(client, report):
         logger.error(f"Error getting installed software version: {str(e)}")
         report.add_content(f"Error: {str(e)}")
 
-    # Test 4: Get candidate software versions
+    # Test 4: Get candidate software versions (equivalent to 'unisphere candidate version')
     logger.info("Testing: Get candidate software versions")
-    report.add_header("Getting Candidate Software Versions")
+    report.add_header(
+        "Getting Candidate Software Versions (unisphere candidate version)"
+    )
     try:
         response = client.get_candidate_software_versions()
         report.add_json(response)
@@ -189,9 +198,9 @@ def run_api_tests(client, report):
         logger.error(f"Error getting candidate software versions: {str(e)}")
         report.add_content(f"Error: {str(e)}")
 
-    # Test 5: Get software upgrade sessions
+    # Test 5: Get software upgrade sessions (equivalent to 'unisphere upgrade sessions')
     logger.info("Testing: Get software upgrade sessions")
-    report.add_header("Getting Software Upgrade Sessions")
+    report.add_header("Getting Software Upgrade Sessions (unisphere upgrade sessions)")
     try:
         response = client.get_software_upgrade_sessions()
         report.add_json(response)
@@ -243,9 +252,9 @@ def test_upgrade_flow(client, report):
     if not create_dummy_upgrade_file(report):
         return False
 
-    # Step 2: Upload the file
+    # Step 2: Upload the file (equivalent to 'unisphere candidate upload')
     logger.info("Step 2: Uploading software package")
-    report.add_header("Step 2: Uploading software package")
+    report.add_header("Step 2: Uploading software package (unisphere candidate upload)")
     try:
         upload_response = client.upload_package(UPGRADE_FILE)
         report.add_json(upload_response)
@@ -269,9 +278,11 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error uploading software package: {str(e)}")
         return False
 
-    # Step 3: Verify upgrade eligibility (stateless)
+    # Step 3: Verify upgrade eligibility (stateless) (equivalent to 'unisphere upgrade verify')
     logger.info("Step 3: Verifying upgrade eligibility")
-    report.add_header("Step 3: Verifying upgrade eligibility")
+    report.add_header(
+        "Step 3: Verifying upgrade eligibility (unisphere upgrade verify)"
+    )
     try:
         # Call verify_upgrade_eligibility with no parameters (stateless)
         # First get the raw response to show in the report
@@ -306,9 +317,9 @@ def test_upgrade_flow(client, report):
         report.add_content("Halting upgrade process due to eligibility check failure.")
         return False
 
-    # Step 4: Prepare the software
+    # Step 4: Prepare the software (equivalent to 'unisphere candidate prepare')
     logger.info("Step 4: Preparing software")
-    report.add_header("Step 4: Preparing software")
+    report.add_header("Step 4: Preparing software (unisphere candidate prepare)")
     try:
         prepare_response = client.prepare_software(file_id)
         report.add_json(prepare_response)
@@ -319,9 +330,11 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error preparing software: {str(e)}")
         return False
 
-    # Step 5: Get candidate software versions
+    # Step 5: Get candidate software versions (equivalent to 'unisphere candidate version')
     logger.info("Step 5: Getting candidate software versions")
-    report.add_header("Step 5: Getting candidate software versions")
+    report.add_header(
+        "Step 5: Getting candidate software versions (unisphere candidate version)"
+    )
     try:
         candidate_response = client.get_candidate_software_versions()
         report.add_json(candidate_response)
@@ -346,9 +359,9 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error getting candidate software versions: {str(e)}")
         return False
 
-    # Step 6: Create an upgrade session
+    # Step 6: Create an upgrade session (equivalent to 'unisphere upgrade create')
     logger.info("Step 6: Creating upgrade session")
-    report.add_header("Step 6: Creating upgrade session")
+    report.add_header("Step 6: Creating upgrade session (unisphere upgrade create)")
     try:
         create_session_response = client.create_upgrade_session(candidate_id)
         report.add_json(create_session_response)
@@ -398,9 +411,9 @@ def test_upgrade_flow(client, report):
         report.add_content(f"Error creating upgrade session: {str(e)}")
         return False
 
-    # Step 7: Monitor the upgrade progress
+    # Step 7: Monitor the upgrade progress (equivalent to 'unisphere upgrade monitor')
     logger.info("Step 7: Monitoring upgrade progress")
-    report.add_header("Step 7: Monitoring upgrade progress")
+    report.add_header("Step 7: Monitoring upgrade progress (unisphere upgrade monitor)")
     report.add_content("Monitoring the upgrade session until completion")
 
     # Create a table for task status tracking

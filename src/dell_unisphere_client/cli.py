@@ -145,6 +145,9 @@ def get_client(
 
 def print_json(data: Any) -> None:
     """Print data as formatted JSON."""
+    # Convert Python objects to JSON string first
+    if not isinstance(data, str):
+        data = json.dumps(data)
     console.print_json(data)
 
 
@@ -193,68 +196,30 @@ def create_parser() -> argparse.ArgumentParser:
     """
 
     parser = argparse.ArgumentParser(
-        description="Dell Unisphere CLI - A command-line interface for Dell Unisphere REST API"
+        description=f"Dell Unisphere CLI v{__version__} - A command-line interface for Dell Unisphere REST API"
     )
     # Add global verbose flag
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose output"
     )
 
+    # Create top-level subparsers
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
-    # Version command
-    version_parser = subparsers.add_parser("version", help="Show version information")
-    add_common_arguments(version_parser)
-
-    # Configure command
-    configure_parser = subparsers.add_parser("configure", help="Configure the client")
-    add_common_arguments(configure_parser)
-    configure_parser.add_argument(
-        "-u", "--url", required=True, help="Base URL of the Unisphere API"
+    # ====== CANDIDATE COMMANDS ======
+    candidate_parser = subparsers.add_parser(
+        "candidate", help="Candidate software operations"
     )
-    configure_parser.add_argument(
-        "-U", "--username", required=True, help="Username for authentication"
-    )
-    configure_parser.add_argument(
-        "-P", "--password", required=True, help="Password for authentication"
-    )
-    configure_parser.add_argument(
-        "--verify-ssl",
-        type=lambda x: x.lower() == "true",
-        help="Verify SSL certificates (true/false)",
+    candidate_subparsers = candidate_parser.add_subparsers(
+        dest="subcommand", help="Candidate software subcommand"
     )
 
-    # Login command
-    login_parser = subparsers.add_parser("login", help="Login to the Unisphere API")
-    add_common_arguments(login_parser)
-    login_parser.add_argument("-u", "--url", help="Base URL of the Unisphere API")
-    login_parser.add_argument("-U", "--username", help="Username for authentication")
-    login_parser.add_argument("-P", "--password", help="Password for authentication")
-    login_parser.add_argument(
-        "--verify-ssl",
-        action="store_true",
-        dest="verify_ssl",
-        help="Verify SSL certificates",
+    # Candidate version command
+    candidate_version_parser = candidate_subparsers.add_parser(
+        "version", help="Get candidate software versions"
     )
-    login_parser.add_argument(
-        "--no-verify-ssl",
-        action="store_false",
-        dest="verify_ssl",
-        help="Do not verify SSL certificates",
-    )
-
-    # Logout command
-    logout_parser = subparsers.add_parser(
-        "logout", help="Logout from the Unisphere API"
-    )
-    add_common_arguments(logout_parser)
-
-    # System info command
-    system_info_parser = subparsers.add_parser(
-        "system-info", help="Get basic system information"
-    )
-    add_common_arguments(system_info_parser)
-    system_info_parser.add_argument(
+    add_common_arguments(candidate_version_parser)
+    candidate_version_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
@@ -262,12 +227,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output in JSON format",
     )
 
-    # Software version command
-    software_version_parser = subparsers.add_parser(
-        "software-version", help="Get installed software version information"
+    # Upload package command
+    candidate_upload_parser = candidate_subparsers.add_parser(
+        "upload", help="Upload a software package"
     )
-    add_common_arguments(software_version_parser)
-    software_version_parser.add_argument(
+    add_common_arguments(candidate_upload_parser)
+    candidate_upload_parser.add_argument(
+        "--file", required=True, help="Path to the software package file"
+    )
+    candidate_upload_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
@@ -275,22 +243,33 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output in JSON format",
     )
 
-    # Candidate versions command
-    candidate_versions_parser = subparsers.add_parser(
-        "candidate-versions", help="Get candidate software versions"
+    # Prepare software command
+    candidate_prepare_parser = candidate_subparsers.add_parser(
+        "prepare", help="Prepare an uploaded software package"
     )
-    add_common_arguments(candidate_versions_parser)
-    candidate_versions_parser.add_argument(
+    add_common_arguments(candidate_prepare_parser)
+    candidate_prepare_parser.add_argument(
+        "--file-id", required=True, help="ID of the uploaded file"
+    )
+    candidate_prepare_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
         dest="json_output",
         help="Output in JSON format",
+    )
+
+    # ====== UPGRADE COMMANDS ======
+    upgrade_parser = subparsers.add_parser(
+        "upgrade", help="Software upgrade operations"
+    )
+    upgrade_subparsers = upgrade_parser.add_subparsers(
+        dest="subcommand", help="Upgrade subcommand"
     )
 
     # Upgrade sessions command
-    upgrade_sessions_parser = subparsers.add_parser(
-        "upgrade-sessions", help="Get software upgrade sessions"
+    upgrade_sessions_parser = upgrade_subparsers.add_parser(
+        "sessions", help="Get software upgrade sessions"
     )
     add_common_arguments(upgrade_sessions_parser)
     upgrade_sessions_parser.add_argument(
@@ -302,23 +281,23 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Verify upgrade command
-    verify_upgrade_parser = subparsers.add_parser(
-        "verify-upgrade", help="Verify upgrade eligibility"
+    upgrade_verify_parser = upgrade_subparsers.add_parser(
+        "verify", help="Verify upgrade eligibility"
     )
-    add_common_arguments(verify_upgrade_parser)
-    verify_upgrade_parser.add_argument(
+    add_common_arguments(upgrade_verify_parser)
+    upgrade_verify_parser.add_argument(
         "--version",
         required=False,
         help="Candidate version ID (optional, not used by the API)",
     )
-    verify_upgrade_parser.add_argument(
+    upgrade_verify_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
         dest="json_output",
         help="Output in JSON format",
     )
-    verify_upgrade_parser.add_argument(
+    upgrade_verify_parser.add_argument(
         "--raw-json",
         action="store_true",
         dest="raw_json",
@@ -326,17 +305,17 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Create upgrade command
-    create_upgrade_parser = subparsers.add_parser(
-        "create-upgrade", help="Create a software upgrade session"
+    upgrade_create_parser = upgrade_subparsers.add_parser(
+        "create", help="Create a software upgrade session"
     )
-    add_common_arguments(create_upgrade_parser)
-    create_upgrade_parser.add_argument(
+    add_common_arguments(upgrade_create_parser)
+    upgrade_create_parser.add_argument(
         "--version", required=True, help="Candidate version ID"
     )
-    create_upgrade_parser.add_argument(
+    upgrade_create_parser.add_argument(
         "-d", "--description", help="Session description"
     )
-    create_upgrade_parser.add_argument(
+    upgrade_create_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
@@ -345,12 +324,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Resume upgrade command
-    resume_upgrade_parser = subparsers.add_parser(
-        "resume-upgrade", help="Resume a software upgrade session"
+    upgrade_resume_parser = upgrade_subparsers.add_parser(
+        "resume", help="Resume a software upgrade session"
     )
-    add_common_arguments(resume_upgrade_parser)
-    resume_upgrade_parser.add_argument("--id", required=True, help="Session ID")
-    resume_upgrade_parser.add_argument(
+    add_common_arguments(upgrade_resume_parser)
+    upgrade_resume_parser.add_argument("--id", required=True, help="Session ID")
+    upgrade_resume_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
@@ -358,31 +337,13 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output in JSON format",
     )
 
-    # Upload package command
-    upload_package_parser = subparsers.add_parser(
-        "upload-package", help="Upload a software package"
+    # Cancel upgrade command
+    upgrade_cancel_parser = upgrade_subparsers.add_parser(
+        "cancel", help="Cancel a software upgrade session"
     )
-    add_common_arguments(upload_package_parser)
-    upload_package_parser.add_argument(
-        "--file", required=True, help="Path to the software package file"
-    )
-    upload_package_parser.add_argument(
-        "-j",
-        "--json",
-        action="store_true",
-        dest="json_output",
-        help="Output in JSON format",
-    )
-
-    # Prepare software command
-    prepare_software_parser = subparsers.add_parser(
-        "prepare-software", help="Prepare an uploaded software package"
-    )
-    add_common_arguments(prepare_software_parser)
-    prepare_software_parser.add_argument(
-        "--file-id", required=True, help="ID of the uploaded file"
-    )
-    prepare_software_parser.add_argument(
+    add_common_arguments(upgrade_cancel_parser)
+    upgrade_cancel_parser.add_argument("--id", required=True, help="Session ID")
+    upgrade_cancel_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
@@ -391,23 +352,108 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Monitor upgrade command (stateless operation)
-    monitor_upgrade_parser = subparsers.add_parser(
-        "monitor-upgrade", help="Monitor the upgrade session (stateless operation)"
+    upgrade_monitor_parser = upgrade_subparsers.add_parser(
+        "monitor", help="Monitor the upgrade session (stateless operation)"
     )
-    add_common_arguments(monitor_upgrade_parser)
-    monitor_upgrade_parser.add_argument(
+    add_common_arguments(upgrade_monitor_parser)
+    upgrade_monitor_parser.add_argument(
         "--interval",
         type=int,
         default=5,
         help="Polling interval in seconds (default: 5)",
     )
-    monitor_upgrade_parser.add_argument(
+    upgrade_monitor_parser.add_argument(
         "--timeout",
         type=int,
         default=7200,
         help="Maximum time to wait in seconds (default: 7200 or 2 hours)",
     )
-    monitor_upgrade_parser.add_argument(
+    upgrade_monitor_parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output in JSON format",
+    )
+
+    # ====== SYSTEM COMMANDS ======
+    system_parser = subparsers.add_parser("system", help="System operations")
+    system_subparsers = system_parser.add_subparsers(
+        dest="subcommand", help="System subcommand"
+    )
+
+    # System login command
+    system_login_parser = system_subparsers.add_parser(
+        "login", help="Login to the Unisphere API"
+    )
+    add_common_arguments(system_login_parser)
+    system_login_parser.add_argument(
+        "-u", "--url", help="Base URL of the Unisphere API"
+    )
+    system_login_parser.add_argument(
+        "-U", "--username", help="Username for authentication"
+    )
+    system_login_parser.add_argument(
+        "-P", "--password", help="Password for authentication"
+    )
+    system_login_parser.add_argument(
+        "--verify-ssl",
+        action="store_true",
+        dest="verify_ssl",
+        help="Verify SSL certificates",
+    )
+    system_login_parser.add_argument(
+        "--no-verify-ssl",
+        action="store_false",
+        dest="verify_ssl",
+        help="Do not verify SSL certificates",
+    )
+
+    # System logout command
+    system_logout_parser = system_subparsers.add_parser(
+        "logout", help="Logout from the Unisphere API"
+    )
+    add_common_arguments(system_logout_parser)
+
+    # System configure command
+    system_configure_parser = system_subparsers.add_parser(
+        "configure", help="Configure the client"
+    )
+    add_common_arguments(system_configure_parser)
+    system_configure_parser.add_argument(
+        "-u", "--url", required=True, help="Base URL of the Unisphere API"
+    )
+    system_configure_parser.add_argument(
+        "-U", "--username", required=True, help="Username for authentication"
+    )
+    system_configure_parser.add_argument(
+        "-P", "--password", required=True, help="Password for authentication"
+    )
+    system_configure_parser.add_argument(
+        "--verify-ssl",
+        type=lambda x: x.lower() == "true",
+        help="Verify SSL certificates (true/false)",
+    )
+
+    # System info command
+    system_info_parser = system_subparsers.add_parser(
+        "info", help="Get basic system information"
+    )
+    add_common_arguments(system_info_parser)
+    system_info_parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output in JSON format",
+    )
+
+    # Software version command (under system)
+    system_software_version_parser = system_subparsers.add_parser(
+        "software-version", help="Get installed software version information"
+    )
+    add_common_arguments(system_software_version_parser)
+    system_software_version_parser.add_argument(
         "-j",
         "--json",
         action="store_true",
@@ -1239,6 +1285,12 @@ def _get_parser_and_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]
     """
     parser = create_parser()
     args = parser.parse_args()
+
+    # If no command was specified, show help
+    if not hasattr(args, "command") or args.command is None:
+        parser.print_help()
+        sys.exit(0)
+
     return parser, args
 
 
@@ -1270,34 +1322,46 @@ def main() -> None:
             args.verbose = False
 
     # Execute the appropriate command
-    if args.command == "version":
-        cmd_version(args)
-    elif args.command == "configure":
-        cmd_configure(args)
-    elif args.command == "login":
-        cmd_login(args)
-    elif args.command == "logout":
-        cmd_logout(args)
-    elif args.command == "system-info":
-        cmd_system_info(args)
-    elif args.command == "software-version":
-        cmd_software_version(args)
-    elif args.command == "candidate-versions":
-        cmd_candidate_versions(args)
-    elif args.command == "upgrade-sessions":
-        cmd_upgrade_sessions(args)
-    elif args.command == "verify-upgrade":
-        cmd_verify_upgrade(args)
-    elif args.command == "create-upgrade":
-        cmd_create_upgrade(args)
-    elif args.command == "resume-upgrade":
-        cmd_resume_upgrade(args)
-    elif args.command == "upload-package":
-        cmd_upload_package(args)
-    elif args.command == "prepare-software":
-        cmd_prepare_software(args)
-    elif args.command == "monitor-upgrade":
-        cmd_monitor_upgrade(args)
+    if args.command == "candidate":
+        if args.subcommand == "version":
+            cmd_candidate_versions(args)
+        elif args.subcommand == "upload":
+            cmd_upload_package(args)
+        elif args.subcommand == "prepare":
+            cmd_prepare_software(args)
+        else:
+            parser.print_help()
+    elif args.command == "upgrade":
+        if args.subcommand == "sessions":
+            cmd_upgrade_sessions(args)
+        elif args.subcommand == "verify":
+            cmd_verify_upgrade(args)
+        elif args.subcommand == "create":
+            cmd_create_upgrade(args)
+        elif args.subcommand == "resume":
+            cmd_resume_upgrade(args)
+        elif args.subcommand == "cancel":
+            # TODO: Implement cancel upgrade functionality
+            console.print(
+                "[yellow]Cancel upgrade functionality not yet implemented[/yellow]"
+            )
+        elif args.subcommand == "monitor":
+            cmd_monitor_upgrade(args)
+        else:
+            parser.print_help()
+    elif args.command == "system":
+        if args.subcommand == "login":
+            cmd_login(args)
+        elif args.subcommand == "logout":
+            cmd_logout(args)
+        elif args.subcommand == "configure":
+            cmd_configure(args)
+        elif args.subcommand == "info":
+            cmd_system_info(args)
+        elif args.subcommand == "software-version":
+            cmd_software_version(args)
+        else:
+            parser.print_help()
     else:
         parser.print_help()
 

@@ -26,10 +26,19 @@ class TestCLI:
     """Test suite for the CLI module."""
 
     def test_parse_args_version(self):
-        """Test parse_args with version command."""
-        with patch("sys.argv", ["uniclient", "version"]):
-            args = parse_args()
-            assert args.command == "version"
+        """Test that version information is available."""
+        # Since version is now shown in the help banner and not a separate command,
+        # we'll just verify that the version is defined and accessible
+        from dell_unisphere_client.version import __version__
+
+        # Verify version is defined
+        assert __version__ is not None
+        assert isinstance(__version__, str)
+
+        # Verify version format (assuming semver format)
+        import re
+
+        assert re.match(r"^\d+\.\d+\.\d+", __version__)
 
     def test_parse_args_configure(self):
         """Test parse_args with configure command."""
@@ -37,6 +46,7 @@ class TestCLI:
             "sys.argv",
             [
                 "uniclient",
+                "system",
                 "configure",
                 "--url",
                 "https://example.com",
@@ -49,7 +59,8 @@ class TestCLI:
             ],
         ):
             args = parse_args()
-            assert args.command == "configure"
+            assert args.command == "system"
+            assert args.subcommand == "configure"
             assert args.url == "https://example.com"
             assert args.username == "testuser"
             assert args.password == "testpass"
@@ -59,76 +70,94 @@ class TestCLI:
         """Test parse_args with login command."""
         with patch(
             "sys.argv",
-            ["uniclient", "login", "--username", "testuser", "--password", "testpass"],
+            [
+                "uniclient",
+                "system",
+                "login",
+                "--username",
+                "testuser",
+                "--password",
+                "testpass",
+            ],
         ):
             args = parse_args()
-            assert args.command == "login"
+            assert args.command == "system"
+            assert args.subcommand == "login"
             assert args.username == "testuser"
             assert args.password == "testpass"
 
     def test_parse_args_logout(self):
         """Test parse_args with logout command."""
-        with patch("sys.argv", ["uniclient", "logout"]):
+        with patch("sys.argv", ["uniclient", "system", "logout"]):
             args = parse_args()
-            assert args.command == "logout"
+            assert args.command == "system"
+            assert args.subcommand == "logout"
 
     def test_parse_args_system_info(self):
-        """Test parse_args with system-info command."""
-        with patch("sys.argv", ["uniclient", "system-info"]):
+        """Test parse_args with system info command."""
+        with patch("sys.argv", ["uniclient", "system", "info"]):
             args = parse_args()
-            assert args.command == "system-info"
+            assert args.command == "system"
+            assert args.subcommand == "info"
 
     def test_parse_args_software_version(self):
         """Test parse_args with software-version command."""
-        with patch("sys.argv", ["uniclient", "software-version"]):
+        with patch("sys.argv", ["uniclient", "system", "software-version"]):
             args = parse_args()
-            assert args.command == "software-version"
+            assert args.command == "system"
+            assert args.subcommand == "software-version"
 
     def test_parse_args_candidate_versions(self):
-        """Test parse_args with candidate-versions command."""
-        with patch("sys.argv", ["uniclient", "candidate-versions"]):
+        """Test parse_args with candidate versions command."""
+        with patch("sys.argv", ["uniclient", "candidate", "version"]):
             args = parse_args()
-            assert args.command == "candidate-versions"
+            assert args.command == "candidate"
+            assert args.subcommand == "version"
 
     def test_parse_args_upgrade_sessions(self):
-        """Test parse_args with upgrade-sessions command."""
-        with patch("sys.argv", ["uniclient", "upgrade-sessions"]):
+        """Test parse_args with upgrade sessions command."""
+        with patch("sys.argv", ["uniclient", "upgrade", "sessions"]):
             args = parse_args()
-            assert args.command == "upgrade-sessions"
+            assert args.command == "upgrade"
+            assert args.subcommand == "sessions"
 
     def test_parse_args_verify_upgrade(self):
-        """Test parse_args with verify-upgrade command."""
+        """Test parse_args with verify upgrade command."""
         with patch(
-            "sys.argv", ["uniclient", "verify-upgrade", "--version", "5.4.0.0.5.150"]
+            "sys.argv", ["uniclient", "upgrade", "verify", "--version", "5.4.0.0.5.150"]
         ):
             args = parse_args()
-            assert args.command == "verify-upgrade"
+            assert args.command == "upgrade"
+            assert args.subcommand == "verify"
             assert args.version == "5.4.0.0.5.150"
 
     def test_parse_args_create_upgrade(self):
-        """Test parse_args with create-upgrade command."""
+        """Test parse_args with create upgrade command."""
         with patch(
-            "sys.argv", ["uniclient", "create-upgrade", "--version", "5.4.0.0.5.150"]
+            "sys.argv", ["uniclient", "upgrade", "create", "--version", "5.4.0.0.5.150"]
         ):
             args = parse_args()
-            assert args.command == "create-upgrade"
+            assert args.command == "upgrade"
+            assert args.subcommand == "create"
             assert args.version == "5.4.0.0.5.150"
 
     def test_parse_args_resume_upgrade(self):
-        """Test parse_args with resume-upgrade command."""
-        with patch("sys.argv", ["uniclient", "resume-upgrade", "--id", "123"]):
+        """Test parse_args with resume upgrade command."""
+        with patch("sys.argv", ["uniclient", "upgrade", "resume", "--id", "123"]):
             args = parse_args()
-            assert args.command == "resume-upgrade"
+            assert args.command == "upgrade"
+            assert args.subcommand == "resume"
             assert args.id == "123"
 
     def test_parse_args_upload_package(self):
-        """Test parse_args with upload-package command."""
+        """Test parse_args with upload package command."""
         with patch(
             "sys.argv",
-            ["uniclient", "upload-package", "--file", "/path/to/package.bin"],
+            ["uniclient", "candidate", "upload", "--file", "/path/to/package.bin"],
         ):
             args = parse_args()
-            assert args.command == "upload-package"
+            assert args.command == "candidate"
+            assert args.subcommand == "upload"
             assert args.file == "/path/to/package.bin"
 
     def test_cmd_version(self, capsys):
@@ -506,12 +535,13 @@ class TestCLI:
         """Test main function."""
         with (
             patch("dell_unisphere_client.cli.parse_args") as mock_parse_args,
-            patch("dell_unisphere_client.cli.cmd_version") as mock_cmd_version,
+            patch("dell_unisphere_client.cli.cmd_system_info") as mock_cmd_system_info,
         ):
-            mock_args = argparse.Namespace(command="version")
+            # Test with system info command
+            mock_args = argparse.Namespace(command="system", subcommand="info")
             mock_parse_args.return_value = mock_args
 
             main()
 
             mock_parse_args.assert_called_once()
-            mock_cmd_version.assert_called_once_with(mock_args)
+            mock_cmd_system_info.assert_called_once_with(mock_args)
