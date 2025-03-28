@@ -5,6 +5,18 @@ All notable changes to the Dell Unisphere Client will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-03-28
+
+### Added
+- New stateless method `monitor_upgrade_sessions` in UnisphereClient class
+- Comprehensive Marp presentation document for client implementation
+
+### Changed
+- Removed session management code to implement fully stateless approach
+- Updated client to use correct schema for creating upgrade sessions
+- Replaced print statements with proper logging in API modules
+- Improved logging format with clear section separators and better JSON formatting
+
 ## [0.4.0] - 2025-03-28
 
 ### Added

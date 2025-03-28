@@ -6,11 +6,12 @@ A Python client library and command-line interface for interacting with Dell EMC
 
 - Complete API client for Dell Unisphere REST API
 - Command-line interface for all API operations
-- Authentication and session management with persistent sessions
+- Stateless authentication with per-request authentication
 - CSRF token handling
-- Software upgrade management with monitoring capabilities
+- Software upgrade management with enhanced monitoring capabilities
+- Estimated time tracking for upgrade tasks
 - File upload support
-- Comprehensive error handling
+- Comprehensive error handling with improved logging
 
 ## Installation
 
@@ -57,7 +58,7 @@ All commands support the following flags:
 
 ### Library Usage
 
-You can also use the Dell Unisphere Client as a library in your Python code:
+You can use the Dell Unisphere Client as a library in your Python code. The client is now fully stateless, authenticating with each API call:
 
 ```python
 from dell_unisphere_client.client import UnisphereClient
@@ -70,9 +71,6 @@ client = UnisphereClient(
     verify_ssl=False,
     verbose=True,  # Enable detailed request and response output
 )
-
-# Login to the API
-client.login()
 
 # Get basic system information
 system_info = client.get_basic_system_info()
@@ -97,27 +95,14 @@ print(session)
 # Resume an upgrade session
 client.resume_upgrade_session("session-id")
 
+# Monitor upgrade sessions with estimated time information
+upgrade_sessions = client.monitor_upgrade_sessions()
+print(f"Total estimated time remaining: {upgrade_sessions['total_estimated_time']}")
+for task in upgrade_sessions['tasks']:
+    print(f"Task: {task['caption']} - Estimated time: {task['estimated_time']}")
+
 # Upload a software package
 client.upload_software_package("/path/to/software-package.bin")
-
-# Logout from the API
-client.logout()
-```
-
-You can also use the client as a context manager:
-
-```python
-from dell_unisphere_client.client import UnisphereClient
-
-with UnisphereClient(
-    base_url="https://your-unisphere-server",
-    username="admin",
-    password="Password123!",
-    verify_ssl=False,
-) as client:
-    # Get basic system information
-    system_info = client.get_basic_system_info()
-    print(system_info)
 ```
 
 ## Development
