@@ -215,7 +215,7 @@ def create_parser() -> argparse.ArgumentParser:
         "candidate", help="Candidate software operations"
     )
     candidate_subparsers = candidate_parser.add_subparsers(
-        dest="subcommand", help="Candidate software subcommand"
+        dest="subcommand", help="Candidate software subcommand", required=True
     )
 
     # Candidate version command
@@ -268,7 +268,7 @@ def create_parser() -> argparse.ArgumentParser:
         "upgrade", help="Software upgrade operations"
     )
     upgrade_subparsers = upgrade_parser.add_subparsers(
-        dest="subcommand", help="Upgrade subcommand"
+        dest="subcommand", help="Upgrade subcommand", required=True
     )
 
     # Upgrade sessions command
@@ -383,7 +383,7 @@ def create_parser() -> argparse.ArgumentParser:
     # ====== SYSTEM COMMANDS ======
     system_parser = subparsers.add_parser("system", help="System operations")
     system_subparsers = system_parser.add_subparsers(
-        dest="subcommand", help="System subcommand"
+        dest="subcommand", help="System subcommand", required=True
     )
 
     # System login command
@@ -1292,10 +1292,16 @@ def _get_parser_and_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]
     parser = create_parser()
     args = parser.parse_args()
 
-    # If no command was specified, show help
-    if not hasattr(args, "command") or args.command is None:
+    # If no command was specified or invalid command, argparse handles it or main handles -h
+    # We check for the presence of command attribute to handle the case where only '-h' or '--help' is passed.
+    if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ("-h", "--help")):
         parser.print_help()
         sys.exit(0)
+    # Let argparse handle invalid choices or missing subcommands
+    elif not hasattr(args, "command"):
+        # This case might occur if only global options like -v are passed without a command
+        parser.print_help()
+        sys.exit(1)  # Exit with error as a command is expected
 
     return parser, args
 
@@ -1311,23 +1317,31 @@ def main() -> None:
         # Check if we're being called from a test that's mocking parse_args
         if frame and frame.f_back and "unittest" in sys.modules:
             args = parse_args()
+            # In tests, we might not need the full parser logic, but create it for consistency
             parser = create_parser()
         else:
-            # Normal operation - get both parser and args
+            # Normal operation - get parser and args
+            # _get_parser_and_args handles initial help/error cases
             parser, args = _get_parser_and_args()
     finally:
         # Always clean up frame references to avoid reference cycles
         del frame
 
     # Set logging level if verbose flag is set
-    if hasattr(args, "verbose") and args.verbose:
+    # Check if args exists, as _get_parser_and_args might exit
+    if "args" in locals() and hasattr(args, "verbose") and args.verbose:
         logger.setLevel(logging.DEBUG)
-    else:
-        # Ensure args has a verbose attribute for tests
-        if not hasattr(args, "verbose"):
-            args.verbose = False
+    elif "args" in locals() and not hasattr(args, "verbose"):
+        # Ensure args has a verbose attribute for tests if not set
+        args.verbose = False
+
+    # We should have args by now if _get_parser_and_args didn't exit
+    if "args" not in locals():
+        # Should not happen if _get_parser_and_args works correctly, but added as a safeguard
+        sys.exit(1)
 
     # Execute the appropriate command
+    # Argparse now ensures 'subcommand' exists if 'command' is valid and requires a subcommand
     if args.command == "candidate":
         if args.subcommand == "version":
             cmd_candidate_versions(args)
@@ -1335,8 +1349,7 @@ def main() -> None:
             cmd_upload_package(args)
         elif args.subcommand == "prepare":
             cmd_prepare_software(args)
-        else:
-            parser.print_help()
+        # No 'else' needed, argparse handles missing subcommand
     elif args.command == "upgrade":
         if args.subcommand == "sessions":
             cmd_upgrade_sessions(args)
@@ -1353,8 +1366,7 @@ def main() -> None:
             )
         elif args.subcommand == "monitor":
             cmd_monitor_upgrade(args)
-        else:
-            parser.print_help()
+        # No 'else' needed, argparse handles missing subcommand
     elif args.command == "system":
         if args.subcommand == "login":
             cmd_login(args)
@@ -1366,9 +1378,10 @@ def main() -> None:
             cmd_system_info(args)
         elif args.subcommand == "software-version":
             cmd_software_version(args)
-        else:
-            parser.print_help()
+        # No 'else' needed, argparse handles missing subcommand
     else:
+        # This case handles commands not recognized by subparsers (shouldn't happen with dest)
+        # Or potentially if a command was added without a handler
         parser.print_help()
 
 

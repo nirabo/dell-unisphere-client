@@ -60,13 +60,17 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 
 #### CLI Layer (cli.py)
 - Handles command-line parsing using argparse
-- Provides user interface for all commands
+- Provides user interface for all commands organized in three main categories:
+  - `system`: Commands for system operations (login, logout, configure, info, software-version)
+  - `candidate`: Commands for candidate software operations (version, upload, prepare)
+  - `upgrade`: Commands for software upgrade operations (sessions, verify, create, resume, cancel, monitor)
 - Routes commands to appropriate business logic
 
 #### Business Logic (client.py)
 - Implements the core functionality
 - Processes data between CLI and API layers
-- Handles authentication and session management
+- Uses a stateless approach for all operations
+- Authenticates with each API call instead of maintaining session state
 
 #### API Communication Layer (http_client.py)
 - Manages HTTP requests to the Unisphere REST API
@@ -80,7 +84,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 
 ### Sequence Diagrams
 
-#### Authentication Flow
+#### Stateless Authentication Flow
 
 ```
 ┌─────┐          ┌──────────┐          ┌─────────┐          ┌─────────────┐
@@ -88,33 +92,54 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 │     │          │ Logic    │          │ Client  │          │ REST API    │
 └──┬──┘          └────┬─────┘          └────┬────┘          └──────┬──────┘
    │                  │                     │                      │
-   │ login command    │                     │                      │
+   │ system login     │                     │                      │
    │─────────────────>│                     │                      │
-   │                  │ check ~/.uniclient  │                      │
-   │                  │ for session file    │                      │
-   │                  │<────────────────────│                      │
-   │                  │                     │                      │
-   │                  │ session exists?     │                      │
+   │                  │ load configuration  │                      │
+   │                  │ from ~/.unisphere   │                      │
+   │                  │ config.json         │                      │
    │                  │────────────────────>│                      │
    │                  │                     │                      │
-   │                  │ yes: validate       │                      │
-   │                  │ session timeout     │                      │
+   │                  │ authenticate with   │                      │
+   │                  │ each API call       │                      │
    │                  │────────────────────>│                      │
-   │                  │                     │                      │
-   │                  │ if valid: reuse     │                      │
-   │                  │ else: authenticate  │                      │
-   │                  │────────────────────>│                      │
-   │                  │                     │ GET login session    │
+   │                  │                     │ POST /api/login      │
    │                  │                     │─────────────────────>│
    │                  │                     │                      │
    │                  │                     │ 200 OK + CSRF token  │
    │                  │                     │<─────────────────────│
-   │                  │ create session file │                      │
-   │                  │ with timeout,       │                      │
-   │                  │ CSRF token, cookie, │                      │
-   │                  │ and credentials     │                      │
+   │                  │ store credentials   │                      │
+   │                  │ in config           │                      │
    │                  │<────────────────────│                      │
    │ success/failure  │                     │                      │
+   │<─────────────────│                     │                      │
+   │                  │                     │                      │
+```
+
+#### Stateless API Request Flow
+
+```
+┌─────┐          ┌──────────┐          ┌─────────┐          ┌─────────────┐
+│ CLI │          │ Business │          │ API     │          │ Unisphere   │
+│     │          │ Logic    │          │ Client  │          │ REST API    │
+└──┬──┘          └────┬─────┘          └────┬────┘          └──────┬──────┘
+   │                  │                     │                      │
+   │ any command      │                     │                      │
+   │─────────────────>│                     │                      │
+   │                  │ load configuration  │                      │
+   │                  │────────────────────>│                      │
+   │                  │                     │                      │
+   │                  │ prepare request     │                      │
+   │                  │ with auth headers   │                      │
+   │                  │────────────────────>│                      │
+   │                  │                     │ API request with     │
+   │                  │                     │ auth headers         │
+   │                  │                     │─────────────────────>│
+   │                  │                     │                      │
+   │                  │                     │ 200 OK + response    │
+   │                  │                     │<─────────────────────│
+   │                  │ process response    │                      │
+   │                  │<────────────────────│                      │
+   │ formatted output │                     │                      │
    │<─────────────────│                     │                      │
    │                  │                     │                      │
 ```
@@ -123,37 +148,29 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 
 ### Functional Requirements
 
-1. **Authentication and Session Management**
+1. **Authentication and API Access**
    - The client must support authentication with the Unisphere API
-   - The client must properly handle CSRF tokens and session cookies
+   - The client must properly handle CSRF tokens and authentication headers
    - The client must provide a logout mechanism
-   - The client must cache session information in `~/.uniclient/session_<timestamped_id>`
-   - Session files must contain:
-     - idle_timeout period
-     - CSRF token
-     - session cookies
-     - username/password (encrypted)
-     - creation and last access timestamps
-   - The client must reuse valid cached sessions when available
-   - The client must automatically expire sessions after idle_timeout
+   - The client must store configuration in `~/.unisphere/config.json`
+   - Configuration file must contain:
+     - base_url: Unisphere API endpoint URL
+     - username: Authentication username
+     - password: Authentication password (encrypted)
+     - verify_ssl: Whether to verify SSL certificates
+   - The client must authenticate with each API call (stateless approach)
    - The client must provide real-time progress updates during long-running operations
-   - The client must cache sessions in ~/.uniclient/session_<timestamped_id> files
-   - The client must reuse valid existing sessions
-   - The client must validate session timeout on each operation
 
-2. **Session Persistence**
-   - Session files must be stored in JSON format with the following structure:
-     * idle_timeout: Session timeout duration in seconds
-     * csrf_token: CSRF token (if available)
-     * session_cookie: Session cookie (if available)
+2. **Configuration Management**
+   - Configuration file must be stored in JSON format with the following structure:
+     * base_url: Unisphere API endpoint URL
      * username: Authentication username
-     * password: Authentication password
-     * creation_timestamp: Session creation time
-     * last_access_timestamp: Last session access time
-   - The ~/.uniclient directory must be created with 700 permissions
-   - Session files must be created with 600 permissions
-   - The client must handle corrupted or invalid session files
-   - The client must delete session files on logout
+     * password: Authentication password (encrypted)
+     * verify_ssl: Whether to verify SSL certificates
+   - The ~/.unisphere directory must be created with 700 permissions
+   - Configuration file must be created with 600 permissions
+   - The client must handle corrupted or invalid configuration files
+   - The client must support configuration via command-line arguments
 
 3. **System Information**
    - The client must retrieve and display basic system information
@@ -215,7 +232,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 - The client is installed
 
 **Flow**:
-1. User runs `uniclient configure --url <url> --username <username> --password <password>`
+1. User runs `unisphere system configure --url <url> --username <username> --password <password>`
 2. Client validates the URL format
 3. Client stores the configuration securely
 4. Client confirms successful configuration
@@ -233,7 +250,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 - The client is configured with server URL and credentials
 
 **Flow**:
-1. User runs `uniclient login`
+1. User runs `unisphere system login`
 2. Client checks for existing session file
 3. If valid session exists:
    a. Client loads session data
@@ -248,7 +265,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 **Postconditions**:
 - The user has an active session
 - The client has stored the session token
-- A session file exists in ~/.uniclient
+- A session file exists in ~/.unisphere
 
 ### System Information
 
@@ -262,7 +279,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 - The user has an active session
 
 **Flow**:
-1. User runs `uniclient system-info`
+1. User runs `unisphere system info`
 2. Client validates session timeout
 3. Client sends request to Unisphere API
 4. Unisphere API returns system information
@@ -285,7 +302,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 - The user has an active session
 
 **Flow**:
-1. User runs `uniclient software-version`
+1. User runs `unisphere system software-version`
 2. Client validates session timeout
 3. Client sends request to Unisphere API
 4. Unisphere API returns installed software information
@@ -306,7 +323,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 - The user has an active session
 
 **Flow**:
-1. User runs `uniclient candidate-versions`
+1. User runs `unisphere candidate version`
 2. Client validates session timeout
 3. Client sends request to Unisphere API
 4. Unisphere API returns candidate software information
@@ -328,7 +345,7 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 - The user has a valid software package file
 
 **Flow**:
-1. User runs `uniclient upload-package --file <path>`
+1. User runs `unisphere candidate upload --file <path>`
 2. Client validates session timeout
 3. Client validates the file exists
 4. Client uploads the file to Unisphere API
@@ -349,20 +366,19 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 **Actors**: User, Client, Unisphere API
 
 **Preconditions**:
-- The user has an active session
+- The client is configured with valid credentials
 - A candidate software version is available
 
 **Flow**:
-1. User runs `uniclient verify-upgrade --version <version>`
-2. Client validates session timeout
-3. Client sends verification request to Unisphere API
-4. Unisphere API checks eligibility
-5. Client displays eligibility results
-6. Client updates session file last_access_timestamp
+1. User runs `unisphere upgrade verify --version <version>`
+2. Client loads configuration
+3. Client authenticates with Unisphere API
+4. Client sends verification request to Unisphere API
+5. Unisphere API checks eligibility
+6. Client displays eligibility results
 
 **Postconditions**:
 - The user knows if the system is eligible for upgrade
-- The session file is updated
 
 #### UC-8: Create Upgrade Session
 
@@ -371,40 +387,64 @@ The Dell Unisphere Client follows a layered architecture pattern, separating con
 **Actors**: User, Client, Unisphere API
 
 **Preconditions**:
-- The user has an active session
+- The client is configured with valid credentials
 - The system is eligible for upgrade
 - A candidate software version is available
 
 **Flow**:
-1. User runs `uniclient create-upgrade --version <version>`
-2. Client validates session timeout
-3. Client sends create request to Unisphere API
-4. Unisphere API creates upgrade session
-5. Client displays session information
-6. Client updates session file last_access_timestamp
+1. User runs `unisphere upgrade create --version <version>`
+2. Client loads configuration
+3. Client authenticates with Unisphere API
+4. Client sends create request to Unisphere API with proper JSON structure
+5. Unisphere API creates upgrade session
+6. Client displays session information
 
 **Postconditions**:
 - An upgrade session is created
-- The session file is updated
 
-#### UC-9: Resume Upgrade Session
+#### UC-10: Monitor Upgrade Session
+
+**Description**: A user monitors the progress of an upgrade session in real-time.
+
+**Actors**: User, Client, Unisphere API
+
+**Preconditions**:
+- The client is configured with valid credentials
+- An active upgrade session exists
+
+**Flow**:
+1. User runs `unisphere upgrade monitor --interval <seconds>`
+2. Client loads configuration
+3. Client authenticates with Unisphere API
+4. Client sends monitoring request to Unisphere API
+5. Client displays upgrade status with:
+   - Header with session information
+   - Progress bar showing completion percentage
+   - Task table with individual task status and estimated time
+6. Client periodically refreshes the display at specified interval
+7. Client handles connection issues with reconnection attempts
+8. Client continues until upgrade completes or user interrupts
+
+**Postconditions**:
+- User has real-time visibility into upgrade progress
+
+#### UC-11: Cancel Upgrade Session
 
 **Description**: A user resumes a paused upgrade session.
 
 **Actors**: User, Client, Unisphere API
 
 **Preconditions**:
-- The user has an active session
+- The client is configured with valid credentials
 - A paused upgrade session exists
 
 **Flow**:
-1. User runs `uniclient resume-upgrade --id <session_id>`
-2. Client validates session timeout
-3. Client sends resume request to Unisphere API
-4. Unisphere API resumes the session
-5. Client displays session status
-6. Client updates session file last_access_timestamp
+1. User runs `unisphere upgrade resume --id <session_id>`
+2. Client loads configuration
+3. Client authenticates with Unisphere API
+4. Client sends resume request to Unisphere API
+5. Unisphere API resumes the session
+6. Client displays session status
 
 **Postconditions**:
 - The upgrade session is resumed
-- The session file is updated

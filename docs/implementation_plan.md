@@ -18,7 +18,7 @@ Based on the curl scripts, the backend workflow includes:
 - Implement login functionality using the existing client API
 - Store session tokens securely
 - Handle authentication errors gracefully
-- Implement session caching in ~/.uniclient/session_<timestamped_id> files
+- Implement session caching in ~/.unisphere/session_<timestamped_id> files
 - Add session validation and timeout handling
 
 ### 2. Session Management

@@ -102,7 +102,7 @@ configure_client() {
     add_header "Configuring the client"
 
     # Configure the client
-    ./uniclient configure --url "${HOST}" --username "${USERNAME}" --password "${PASSWORD}"
+    ./unisphere configure --url "${HOST}" --username "${USERNAME}" --password "${PASSWORD}"
 
     log_info "Client configured with URL: ${HOST}, Username: ${USERNAME}"
     return 0
@@ -115,7 +115,7 @@ run_api_tests() {
     # Test 1: Login
     add_header "Login"
     # Pass password explicitly to avoid prompt
-    if ./uniclient login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}"; then
+    if ./unisphere login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}"; then
         log_info "Login successful"
     else
         log_error "Login failed"
@@ -124,31 +124,31 @@ run_api_tests() {
 
     # Test 2: Get basic system info
     add_header "Getting Basic System Info"
-    SYSTEM_INFO=$(./uniclient system-info --json)
+    SYSTEM_INFO=$(./unisphere system-info --json)
     add_json "${SYSTEM_INFO}"
     log_info "Basic system info retrieved successfully"
 
     # Test 3: Get installed software version
     add_header "Getting Installed Software Version"
-    SOFTWARE_VERSION=$(./uniclient software-version --json)
+    SOFTWARE_VERSION=$(./unisphere software-version --json)
     add_json "${SOFTWARE_VERSION}"
     log_info "Installed software version retrieved successfully"
 
     # Test 4: Get candidate software versions
     add_header "Getting Candidate Software Versions"
-    CANDIDATE_VERSIONS=$(./uniclient candidate-versions --json)
+    CANDIDATE_VERSIONS=$(./unisphere candidate-versions --json)
     add_json "${CANDIDATE_VERSIONS}"
     log_info "Candidate software versions retrieved successfully"
 
     # Test 5: Get software upgrade sessions
     add_header "Getting Software Upgrade Sessions"
-    UPGRADE_SESSIONS=$(./uniclient upgrade-sessions --json)
+    UPGRADE_SESSIONS=$(./unisphere upgrade-sessions --json)
     add_json "${UPGRADE_SESSIONS}"
     log_info "Software upgrade sessions retrieved successfully"
 
     # Test 6: Verify upgrade eligibility
     add_header "Verifying Upgrade Eligibility"
-    VERIFY_UPGRADE=$(./uniclient verify-upgrade --version "5.4.0.0.5.150" --json)
+    VERIFY_UPGRADE=$(./unisphere verify-upgrade --version "5.4.0.0.5.150" --json)
     add_json "${VERIFY_UPGRADE}"
     log_info "Upgrade eligibility verified successfully"
 
@@ -163,7 +163,7 @@ test_upgrade_flow() {
 
     # Make sure we're logged in
     log_info "Ensuring we're logged in"
-    ./uniclient login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}" || true
+    ./unisphere login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}" || true
 
     # Step 1: Create a dummy upgrade file
     log_info "Step 1: Creating dummy upgrade file"
@@ -176,7 +176,7 @@ test_upgrade_flow() {
     # Step 2: Upload the file
     log_info "Step 2: Uploading software package"
     add_header "Step 2: Uploading software package"
-    UPLOAD_RESPONSE=$(./uniclient upload-package --file "${UPGRADE_FILE}" --json)
+    UPLOAD_RESPONSE=$(./unisphere upload-package --file "${UPGRADE_FILE}" --json)
     add_json "${UPLOAD_RESPONSE}"
 
     # Debug output
@@ -205,14 +205,14 @@ test_upgrade_flow() {
     # Step 3: Prepare the software
     log_info "Step 3: Preparing software"
     add_header "Step 3: Preparing software"
-    PREPARE_RESPONSE=$(./uniclient prepare-software --file-id "${FILE_ID}" --json)
+    PREPARE_RESPONSE=$(./unisphere prepare-software --file-id "${FILE_ID}" --json)
     add_json "${PREPARE_RESPONSE}"
     log_info "Software prepared successfully"
 
     # Step 4: Get candidate software versions
     log_info "Step 4: Getting candidate software versions"
     add_header "Step 4: Getting candidate software versions"
-    CANDIDATE_RESPONSE=$(./uniclient candidate-versions --json)
+    CANDIDATE_RESPONSE=$(./unisphere candidate-versions --json)
     add_json "${CANDIDATE_RESPONSE}"
 
     # Extract the candidate ID - use jq if available
@@ -241,12 +241,12 @@ test_upgrade_flow() {
 
     # Make sure we're logged in with a fresh session to get a valid CSRF token
     log_info "Ensuring we have a valid CSRF token by logging in again"
-    ./uniclient logout || true
-    ./uniclient login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}"
+    ./unisphere logout || true
+    ./unisphere login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}"
 
     # Run the create-upgrade command and capture the output
     log_info "Running create-upgrade command with version: ${CANDIDATE_ID}"
-    CREATE_SESSION_RESPONSE=$(./uniclient create-upgrade --version "${CANDIDATE_ID}" --json)
+    CREATE_SESSION_RESPONSE=$(./unisphere create-upgrade --version "${CANDIDATE_ID}" --json)
 
     # Debug output - print the raw response
     echo "DEBUG: Create session raw response: ${CREATE_SESSION_RESPONSE}"
@@ -284,9 +284,9 @@ test_upgrade_flow() {
         log_info "Could not extract session ID from create response, trying to get it from upgrade-sessions"
 
         # Make sure we're logged in again to get fresh data
-        ./uniclient login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}" || true
+        ./unisphere login --username "${USERNAME}" --password "${PASSWORD}" --url "${HOST}" || true
 
-        SESSIONS_RESPONSE=$(./uniclient upgrade-sessions --json)
+        SESSIONS_RESPONSE=$(./unisphere upgrade-sessions --json)
         echo "DEBUG: Sessions response: ${SESSIONS_RESPONSE}"
 
         if command -v jq >/dev/null 2>&1; then
@@ -609,7 +609,7 @@ EOF
     add_json "${MONITOR_RESPONSE}"
 
     # Get the final status for the report
-    MONITOR_RESPONSE=$(./uniclient upgrade-sessions --json)
+    MONITOR_RESPONSE=$(./unisphere upgrade-sessions --json)
     add_json "${MONITOR_RESPONSE}"
 
     log_info "Upgrade completed successfully!"
@@ -665,7 +665,7 @@ cleanup() {
     fi
 
     # Logout
-    ./uniclient logout || true
+    ./unisphere logout || true
     log_info "Logged out successfully"
 }
 
